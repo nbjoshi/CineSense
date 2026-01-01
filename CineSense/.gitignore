@@ -182,3 +182,9 @@ fastlane/.env*
 node_modules/
 npm-debug.log
 yarn-error.log
+
+# Internal planning docs (keep README.md public)
+SPEC.md
+TASKS.md
+ARCHITECTURE.md
+API_CONTRACTS.md

@@ -23,6 +23,10 @@ struct CineSenseApp: App {
                 }
             }
             .environmentObject(sessionStore)
+            .onOpenURL { url in
+                print("🔗 Deep link received: \(url)")
+                sessionStore.handleOpenURL(url)
+            }
             .task {
                 await sessionStore.bootstrap()
             }

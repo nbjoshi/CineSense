@@ -1,0 +1,184 @@
+# ============================================
+# SECURITY - Secrets & Credentials
+# ============================================
+
+# Info.plist contains API keys (Supabase, TMDB)
+**/Info.plist
+
+# Environment files
+.env
+.env.local
+*.env
+
+# API Keys and credentials
+secrets.json
+credentials.json
+config.json
+
+# ============================================
+# Internal Planning Docs (keep README.md public)
+# ============================================
+
+SPEC.md
+TASKS.md
+ARCHITECTURE.md
+API_CONTRACTS.md
+
+# ============================================
+# Xcode
+# ============================================
+
+# Build generated
+build/
+DerivedData/
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+!*.xcodeproj/project.xcworkspace/
+*.xcworkspace/*
+!*.xcworkspace/contents.xcworkspacedata
+
+# User-specific xcuserdata
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad
+
+# Xcode Patch
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+*.xcworkspace/*
+!*.xcworkspace/contents.xcworkspacedata
+
+# Backup files
+*.backup
+*.pbxproj.backup
+
+# ============================================
+# Swift Package Manager
+# ============================================
+
+.swiftpm/
+.build/
+Package.resolved
+*.swiftpm
+
+# ============================================
+# CocoaPods (if used)
+# ============================================
+
+Pods/
+Podfile.lock
+*.xcworkspace
+
+# ============================================
+# Carthage (if used)
+# ============================================
+
+Carthage/Build/
+Carthage/Checkouts/
+
+# ============================================
+# macOS
+# ============================================
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Files that might appear in the root of a volume
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Directories potentially created on remote AFP share
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# ============================================
+# Swift
+# ============================================
+
+# Swift Package Manager build artifacts
+/.build
+/Packages
+Package.pins
+Package.resolved
+*.xcodeproj
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# ============================================
+# Fastlane
+# ============================================
+
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+fastlane/.env*
+
+# ============================================
+# Code Coverage
+# ============================================
+
+*.gcda
+*.gcno
+
+# ============================================
+# App Signing
+# ============================================
+
+*.cer
+*.p12
+*.mobileprovision
+*.provisionprofile
+
+# ============================================
+# IDEs
+# ============================================
+
+# AppCode
+.idea/
+*.iml
+
+# VSCode
+.vscode/
+
+# ============================================
+# Temporary files
+# ============================================
+
+*.swp
+*.swo
+*~
+*.tmp
+*.log
+
+# ============================================
+# Database & Storage
+# ============================================
+
+*.sqlite
+*.sqlite3
+*.db
+
+# ============================================
+# Node/npm (if using for scripts)
+# ============================================
+
+node_modules/
+npm-debug.log
+yarn-error.log

@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		180017982F05EDF3004C8F1F /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 909362176D312EDC97E4943B /* Supabase */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		180017212F05DBFF004C8F1F /* CineSense.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CineSense.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -36,6 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				180017982F05EDF3004C8F1F /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,14 +124,6 @@
 				180017202F05DBFF004C8F1F /* CineSense */,
 			);
 		};
-/* Begin XCSwiftPackageProductDependency section */
-		909362176D312EDC97E4943B /* Supabase */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 180017392F05E3CE004C8F1F /* XCRemoteSwiftPackageReference "supabase-swift" */;
-			productName = Supabase;
-		};
-/* End XCSwiftPackageProductDependency section */
-
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
@@ -370,6 +367,14 @@
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		909362176D312EDC97E4943B /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 180017392F05E3CE004C8F1F /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 180017192F05DBFF004C8F1F /* Project object */;
 }

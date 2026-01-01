@@ -19,7 +19,7 @@ struct RootTabView: View {
                     Label("Home", systemImage: "house.fill")
                 }
 
-            SearchTab()
+            SearchView()
                 .tabItem {
                     Label("Search", systemImage: "magnifyingglass")
                 }
@@ -56,22 +56,6 @@ private struct HomeTab: View {
                     .foregroundColor(.secondary)
             }
             .navigationTitle("Home")
-        }
-    }
-}
-
-private struct SearchTab: View {
-    var body: some View {
-        NavigationStack {
-            VStack {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.secondary)
-                Text("Search")
-                    .font(.title)
-                    .foregroundColor(.secondary)
-            }
-            .navigationTitle("Search")
         }
     }
 }

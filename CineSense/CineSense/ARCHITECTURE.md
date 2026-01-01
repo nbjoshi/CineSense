@@ -11,7 +11,6 @@ cinesense/
       Models/
       UIComponents/
       Resources/
-    CineSenseTests/
   supabase/
     migrations/
     functions/
@@ -24,7 +23,7 @@ cinesense/
 - SwiftUI
 - MVVM + Services
 - async/await (no Combine unless needed)
-- SwiftData for local cache (phase 2, optional for v1)
+- SwiftData for local cache
 - Supabase Swift SDK for Auth/DB/Realtime/Storage
 
 ## MVVM Pattern
@@ -38,7 +37,7 @@ cinesense/
 - Services: `AuthService`, `TMDBService`, `ListsService`, `ReviewsService`, `ShareService`, `AIIdentifyService`
 
 ## Data Flow
-View → ViewModel → Service → (Supabase Edge Function / Supabase DB / TMDB via proxy) → ViewModel → View
+View → ViewModel → Service → (Supabase Edge Function / Supabase DB / TMDB) → ViewModel → View
 
 ## Core Modules
 
@@ -55,7 +54,7 @@ View → ViewModel → Service → (Supabase Edge Function / Supabase DB / TMDB 
 - `ShareService.swift` — create/resolve share links
 - `StorageService.swift` — avatar upload, ai_upload_url flow
 - `AIIdentifyService.swift` — call edge function `ai_identify`
-- `TMDBService.swift` — calls `tmdb_proxy` (preferred) or direct TMDB (not recommended)
+- `TMDBService.swift` — calls direct TMDB API
 
 ### Models/
 - Domain models: `Profile`, `List`, `ListItem`, `Review`, etc.

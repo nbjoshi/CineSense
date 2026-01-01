@@ -9,9 +9,23 @@ import SwiftUI
 
 @main
 struct CineSenseApp: App {
+    @StateObject private var sessionStore = SessionStore()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            Group {
+                if sessionStore.isBootstrapping {
+                    ProgressView("Loading...")
+                } else if sessionStore.session != nil {
+                    RootTabView()
+                } else {
+                    AuthView()
+                }
+            }
+            .environmentObject(sessionStore)
+            .task {
+                await sessionStore.bootstrap()
+            }
         }
     }
 }

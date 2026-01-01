@@ -13,11 +13,6 @@ Login is required.
 - Demonstrate backend architecture: Supabase RLS, Realtime, Storage, Edge Functions.
 - Differentiate from generic trackers via AI Identify + Shared Lists + share links.
 
-## Non-Goals (v1)
-- In-app discovery/search for users or lists (public discovery is via share links only).
-- Full messaging/DMs (can be v1.5).
-- Full moderation/admin UI (basic report/block flows only).
-
 ## Target Users
 People who watch movies/TV and want to:
 - track watchlist/favorites/watched,
@@ -32,7 +27,7 @@ People who watch movies/TV and want to:
 
 ## Authentication
 - Required on app launch.
-- Sign in with Apple is primary option.
+- Sign in with email via Supabase.
 
 ## Core Features
 
@@ -94,14 +89,13 @@ Curated shelves (max 4–6):
 - `ai_uploads` (private) — screenshots used for AI Identify
 - (optional) `share_cards` (public) — generated share images
 
-## Edge Functions (v1)
+## Edge Functions
 - `ai_upload_url` — returns signed upload URL for private `ai_uploads`
 - `ai_identify` — reads uploaded image + text hint → calls Gemini → returns candidates
-- `tmdb_proxy` — optional but recommended (secure/cached TMDB access)
 - `share_create` — create share link tokens for public list/profile
 - `share_resolve` — resolve share token to target type/id (or use DB RPC)
 
-## Acceptance Criteria (v1)
+## Acceptance Criteria
 
 ### UX/Quality
 - Every screen has loading/empty/error states.

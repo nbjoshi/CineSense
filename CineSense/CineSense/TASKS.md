@@ -2,16 +2,6 @@
 
 Guiding principle: build vertical slices, not layers. Each task should be ~1–2 hours.
 
-## Milestone 0 — Project scaffolding
-1. Create repo layout (ios/ + supabase/ + docs)
-   - AC: builds in Xcode, docs exist (SPEC/ARCH/TASKS/API)
-
-2. Add Supabase Swift SDK and create Supabase client provider
-   - AC: app compiles; one centralized client initialization
-
-3. Create SessionStore + AuthService
-   - AC: session state updates; sign out returns to auth screen
-
 ## Milestone 1 — Auth (required login)
 4. Sign in with Apple UI + flow (AuthView)
    - AC: user can sign in; session persists on app relaunch

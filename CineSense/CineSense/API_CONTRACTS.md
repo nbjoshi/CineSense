@@ -2,6 +2,68 @@
 
 All endpoints require an authenticated user (JWT) unless explicitly noted.
 
+## Share Links (DB + RPC, no extra Edge Functions)
+
+Public sharing is supported **only via link/token** (no public in-app discovery).  
+Users must be logged in, but the share token functions as a capability to view the shared resource.
+
+### Goals
+- Share **public profiles** and **public lists** via tokenized deep links: `cinesense://share/<token>`
+- Avoid additional Edge Functions (use Postgres + RLS + RPC)
+- Ensure tokens can be revoked/expired
+- Ensure private resources cannot be shared by token
+
+---
+
+## Database: `public.share_links`
+
+> NOTE: `share_links` already exists in our schema and contains a `token` UUID used in share URLs.
+
+Key columns:
+- `token (uuid)` — share token placed in the URL (must be unique)
+- `target_type (enum/user-defined)` — expected values: `'profile'` or `'list'`
+- `target_id (uuid)` — points to `profiles.id` OR `lists.id` depending on `target_type`
+- `created_by (uuid)` — creator (`auth.uid()`); should default to `auth.uid()` so clients do not supply it
+- `expires_at (timestamptz, nullable)` — optional expiration
+- `revoked_at (timestamptz, nullable)` — set to revoke token
+- `created_at (timestamptz)` — audit
+
+Indexes (recommended):
+- `created_by`
+- `(target_type, target_id)`
+- `unique(token)`
+
+---
+
+## RLS policies for `share_links`
+
+We enable RLS and use a strict insert policy so a user can only create share links for:
+- their **own public profile** (`profiles.is_public = true`)
+- their **own public list** (`lists.owner_id = auth.uid()` AND `lists.is_public = true`)
+
+We also allow:
+- selecting your own created share links (to manage/revoke them)
+- updating your own created share links (primarily to set `revoked_at`)
+
+---
+
+## RPC: `public.resolve_share(p_token uuid)`
+
+Purpose:
+- Resolve a share token to a share target: `{ target_type, target_id }`
+- Validate server-side:
+  - token exists
+  - not expired (`expires_at` is null OR in the future)
+  - not revoked (`revoked_at` is null)
+  - target exists and is still public:
+    - profile: `profiles.is_public = true`
+    - list: `lists.is_public = true`
+
+Response (single row):
+```json
+{ "target_type": "profile" | "list", "target_id": "<uuid>" }
+
+
 ## Edge Function: ai_upload_url
 Purpose: issue signed upload URL for private bucket `ai_uploads`.
 

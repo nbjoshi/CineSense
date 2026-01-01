@@ -15,16 +15,20 @@ struct SearchView: View {
             VStack {
                 switch viewModel.state {
                 case .idle:
-                    ContentUnavailableView(
-                        "Search Movies & TV Shows",
-                        systemImage: "magnifyingglass",
-                        description: Text("Enter a title to search")
-                    )
+                    if viewModel.recentSearches.isEmpty {
+                        ContentUnavailableView(
+                            "Search Movies & TV Shows",
+                            systemImage: "magnifyingglass",
+                            description: Text("Enter a title to search")
+                        )
+                    } else {
+                        RecentSearchesList(viewModel: viewModel)
+                    }
 
                 case .loading:
                     ProgressView("Searching...")
 
-                case .loaded(let results):
+                case let .loaded(results):
                     List(results) { media in
                         NavigationLink(value: media) {
                             MediaSearchRow(media: media)
@@ -39,7 +43,7 @@ struct SearchView: View {
                         description: Text("Try a different search term")
                     )
 
-                case .failed(let error):
+                case let .failed(error):
                     ContentUnavailableView(
                         "Search Failed",
                         systemImage: "exclamationmark.triangle",
@@ -116,6 +120,50 @@ private struct MediaTypeBadge: View {
             .background(mediaType == .movie ? Color.blue.opacity(0.2) : Color.purple.opacity(0.2))
             .foregroundColor(mediaType == .movie ? .blue : .purple)
             .clipShape(Capsule())
+    }
+}
+
+// MARK: - Recent Searches List
+
+private struct RecentSearchesList: View {
+    @ObservedObject var viewModel: SearchViewModel
+
+    var body: some View {
+        List {
+            Section {
+                ForEach(viewModel.recentSearches) { search in
+                    Button {
+                        viewModel.selectRecentSearch(search)
+                    } label: {
+                        HStack {
+                            Image(systemName: "clock.arrow.circlepath")
+                                .foregroundColor(.secondary)
+                            Text(search.query)
+                                .foregroundColor(.primary)
+                            Spacer()
+                        }
+                    }
+                }
+                .onDelete { indexSet in
+                    indexSet.forEach { index in
+                        viewModel.deleteRecentSearch(viewModel.recentSearches[index])
+                    }
+                }
+            } header: {
+                HStack {
+                    Text("Recent Searches")
+                    Spacer()
+                    if !viewModel.recentSearches.isEmpty {
+                        Button("Clear All") {
+                            viewModel.clearAllRecentSearches()
+                        }
+                        .font(.caption)
+                        .textCase(nil)
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
     }
 }
 

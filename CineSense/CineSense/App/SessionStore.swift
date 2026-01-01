@@ -5,8 +5,8 @@
 //  Created by Neel Joshi on 12/31/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 import Supabase
 
 /// ObservableObject managing session state and app bootstrapping
@@ -18,6 +18,13 @@ final class SessionStore: ObservableObject {
 
     // Auth form state
     @Published var email = ""
+    @Published var authMode: AuthMode = .login {
+        didSet {
+            // Reset messages when mode changes
+            resetMessages()
+        }
+    }
+
     @Published var isSubmitting = false
     @Published var didSubmit = false
     @Published var errorMessage: String?
@@ -27,6 +34,12 @@ final class SessionStore: ObservableObject {
 
     init(authService: AuthService = AuthService()) {
         self.authService = authService
+    }
+
+    /// Reset UI messages
+    func resetMessages() {
+        didSubmit = false
+        errorMessage = nil
     }
 
     /// Bootstrap the app by checking for an existing session
@@ -61,16 +74,44 @@ final class SessionStore: ObservableObject {
         errorMessage = nil
 
         do {
-            print("Sending magic link to: \(email)")
-            try await authService.signInWithOTP(email: email)
+            print("Sending magic link to: \(email) (mode: \(authMode.rawValue))")
+            try await authService.signInWithOTP(email: email, mode: authMode)
             didSubmit = true
             print("Magic link sent successfully!")
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = mapErrorToFriendlyMessage(error)
             print("Sign in error: \(error)")
         }
 
         isSubmitting = false
+    }
+
+    /// Map Supabase errors to user-friendly, mode-specific messages
+    private func mapErrorToFriendlyMessage(_ error: Error) -> String {
+        let errorString = "\(error)"
+
+        // Login mode: user not found
+        if authMode == .login && errorString.contains("User not found") {
+            return "No account found. Switch to Sign up."
+        }
+
+        // Signup mode: user already exists
+        if authMode == .signup && (errorString.contains("already registered") || errorString.contains("already exists")) {
+            return "Account already exists. Switch to Log in."
+        }
+
+        // Invalid email format
+        if errorString.contains("email") && errorString.contains("invalid") {
+            return "Please enter a valid email address."
+        }
+
+        // Rate limiting
+        if errorString.contains("rate limit") || errorString.contains("too many") {
+            return "Too many requests. Please try again in a few minutes."
+        }
+
+        // Default fallback
+        return error.localizedDescription
     }
 
     /// Sign out the current user
@@ -93,7 +134,7 @@ final class SessionStore: ObservableObject {
             }
         }
     }
-    
+
     func handleOpenURL(_ url: URL) {
         SupabaseClientProvider.shared.client.auth.handle(url)
     }

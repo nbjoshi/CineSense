@@ -13,105 +13,111 @@ struct AuthView: View {
     @FocusState private var isEmailFocused: Bool
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        ScrollView {
+            VStack(spacing: DS.xl) {
+                // Hero Section
+                VStack(spacing: DS.md) {
+                    Image(systemName: "film.stack")
+                        .font(.system(size: 72))
+                        .foregroundStyle(.tint)
+                        .padding(.top, DS.xl)
 
-            // App Icon
-            Image(systemName: "film.stack")
-                .font(.system(size: 80))
-                .foregroundStyle(.tint)
+                    Text("CineSense")
+                        .font(.csHeroTitle)
 
-            Text("CineSense")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-
-            Spacer()
-
-            // Email Input
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Email")
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(.secondary)
-
-                TextField("your@email.com", text: $sessionStore.email)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .autocapitalization(.none)
-                    .textInputAutocapitalization(.never)
-                    .focused($isEmailFocused)
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(10)
-                    .disabled(sessionStore.isSubmitting)
-            }
-            .padding(.horizontal)
-
-            // Sign In Button
-            Button {
-                isEmailFocused = false
-                Task {
-                    await sessionStore.sendMagicLink()
+                    Text(sessionStore.authMode.subtitle)
+                        .font(.csSubhead)
+                        .foregroundStyle(.secondary)
                 }
-            } label: {
-                if sessionStore.isSubmitting {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .tint(.white)
-                } else {
-                    Text("Send Magic Link")
-                        .fontWeight(.semibold)
+                .padding(.bottom, DS.lg)
+
+                // Form Card
+                VStack(spacing: DS.lg) {
+                    // Mode Picker
+                    Picker("Mode", selection: $sessionStore.authMode) {
+                        ForEach(AuthMode.allCases) { mode in
+                            Text(mode.rawValue).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    // Email Field
+                    VStack(alignment: .leading, spacing: DS.sm) {
+                        Text("Email")
+                            .font(.csSubhead)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
+
+                        TextField("your@email.com", text: $sessionStore.email)
+                            .textContentType(.emailAddress)
+                            .keyboardType(.emailAddress)
+                            .focused($isEmailFocused)
+                            .disabled(sessionStore.isSubmitting || sessionStore.didSubmit)
+                            .csEmailField()
+                    }
+
+                    // Primary Action Button
+                    if !sessionStore.didSubmit {
+                        Button {
+                            isEmailFocused = false
+                            Task {
+                                await sessionStore.sendMagicLink()
+                            }
+                        } label: {
+                            if sessionStore.isSubmitting {
+                                ProgressView()
+                                    .progressViewStyle(.circular)
+                                    .tint(.white)
+                            } else {
+                                Text(sessionStore.authMode.buttonLabel)
+                            }
+                        }
+                        .buttonStyle(CSPrimaryButtonStyle())
+                        .disabled(isButtonDisabled)
+                        .opacity(isButtonDisabled ? 0.6 : 1.0)
+                    }
+
+                    // Success State
+                    if sessionStore.didSubmit {
+                        CSInlineMessage(
+                            kind: .success,
+                            title: "Check your email",
+                            message: "Open the link on this phone to finish."
+                        )
+
+                        // Post-submit actions
+                        HStack(spacing: DS.sm) {
+                            Button("Resend link") {
+                                Task {
+                                    await sessionStore.sendMagicLink()
+                                }
+                            }
+                            .buttonStyle(CSSecondaryButtonStyle())
+
+                            Button("Change email") {
+                                sessionStore.resetMessages()
+                                isEmailFocused = true
+                            }
+                            .buttonStyle(CSSecondaryButtonStyle())
+                        }
+                    }
+
+                    // Error Message
+                    if let errorMessage = sessionStore.errorMessage {
+                        CSInlineMessage(
+                            kind: .error,
+                            title: "Error",
+                            message: errorMessage
+                        )
+                    }
                 }
+                .csCard()
+                .csPagePadding()
+                .csContentWidth()
             }
             .frame(maxWidth: .infinity)
-            .padding()
-            .background(isButtonDisabled ? Color.gray : Color.accentColor)
-            .foregroundColor(.white)
-            .cornerRadius(10)
-            .padding(.horizontal)
-            .disabled(isButtonDisabled)
-
-            // Success Message
-            if sessionStore.didSubmit {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                    Text("Magic link sent! Check your email.")
-                        .font(.subheadline)
-                        .foregroundColor(.green)
-                }
-                .padding()
-                .background(Color.green.opacity(0.1))
-                .cornerRadius(8)
-                .padding(.horizontal)
-            }
-
-            // Error Message
-            if let errorMessage = sessionStore.errorMessage {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.red)
-                    Text(errorMessage)
-                        .font(.subheadline)
-                        .foregroundColor(.red)
-                }
-                .padding()
-                .background(Color.red.opacity(0.1))
-                .cornerRadius(8)
-                .padding(.horizontal)
-            }
-
-            // Info Text
-            Text("We'll send you a sign-in link. Click it to access your account.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-
-            Spacer()
-            Spacer()
         }
-        .padding()
+        .scrollDismissesKeyboard(.interactively)
     }
 
     private var isButtonDisabled: Bool {

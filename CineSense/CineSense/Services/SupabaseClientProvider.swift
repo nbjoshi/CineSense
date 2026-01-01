@@ -5,9 +5,9 @@
 //  Created by Neel Joshi on 12/31/25.
 //
 
+import Auth
 import Foundation
 import Supabase
-import Auth
 
 /// Singleton providing a configured Supabase client
 final class SupabaseClientProvider {
@@ -16,7 +16,7 @@ final class SupabaseClientProvider {
     let client: SupabaseClient
 
     private init() {
-        self.client = SupabaseClient(
+        client = SupabaseClient(
             supabaseURL: SupabaseConfig.url,
             supabaseKey: SupabaseConfig.anonKey,
             options: SupabaseClientOptions(

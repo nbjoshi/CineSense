@@ -19,10 +19,10 @@ struct MediaDetailView: View {
             case .loading:
                 ProgressView("Loading...")
 
-            case .loaded(let detail):
+            case let .loaded(detail):
                 DetailContent(detail: detail)
 
-            case .failed(let error):
+            case let .failed(error):
                 ContentUnavailableView(
                     "Failed to Load",
                     systemImage: "exclamationmark.triangle",

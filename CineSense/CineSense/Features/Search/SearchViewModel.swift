@@ -5,8 +5,9 @@
 //  Created by Neel Joshi on 12/31/25.
 //
 
-import Foundation
 import Combine
+import Foundation
+import SwiftUI
 
 @MainActor
 final class SearchViewModel: ObservableObject {
@@ -35,11 +36,29 @@ final class SearchViewModel: ObservableObject {
         }
     }
 
-    private let tmdbService: TMDBService
+    private let searchService: SearchService
+    private let recentSearchesStore: RecentSearchesStore
     private var searchTask: Task<Void, Never>?
 
-    init(tmdbService: TMDBService = TMDBService()) {
-        self.tmdbService = tmdbService
+    var recentSearches: [RecentSearch] {
+        recentSearchesStore.recentSearches
+    }
+
+    init(searchService: SearchService = SearchService(), recentSearchesStore: RecentSearchesStore? = nil) {
+        self.searchService = searchService
+        self.recentSearchesStore = recentSearchesStore ?? RecentSearchesStore()
+    }
+
+    func selectRecentSearch(_ search: RecentSearch) {
+        query = search.query
+    }
+
+    func deleteRecentSearch(_ search: RecentSearch) {
+        recentSearchesStore.removeSearch(search)
+    }
+
+    func clearAllRecentSearches() {
+        recentSearchesStore.clearAll()
     }
 
     private func performSearch() async {
@@ -51,11 +70,14 @@ final class SearchViewModel: ObservableObject {
         state = .loading
 
         do {
-            let results = try await tmdbService.searchMulti(query: query)
-            if results.isEmpty {
+            let response = try await searchService.multiSearch(query: query, page: 1)
+            let mediaSummaries = response.results.compactMap { $0.toMediaSummary() }
+            if mediaSummaries.isEmpty {
                 state = .empty
             } else {
-                state = .loaded(results)
+                state = .loaded(mediaSummaries)
+                // Save successful search to recent searches
+                recentSearchesStore.addSearch(query)
             }
         } catch {
             state = .failed(error)

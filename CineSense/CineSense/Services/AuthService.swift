@@ -22,9 +22,17 @@ final class AuthService {
         return try await client.auth.session
     }
 
-    /// Send magic link (OTP) to email
-    func signInWithOTP(email: String) async throws {
-        try await client.auth.signInWithOTP(email: email, redirectTo: URL(string: "cinesense://auth-callback")!)
+    /// Send magic link (OTP) to email with mode-specific options
+    func signInWithOTP(email: String, mode: AuthMode) async throws {
+        let redirectURL = URL(string: "cinesense://auth-callback")!
+
+        // Control user creation based on mode
+        let shouldCreateUser = (mode == .signup)
+
+        try await client.auth.signInWithOTP(
+            email: email,
+            redirectTo: redirectURL
+        )
     }
 
     /// Sign out the current user

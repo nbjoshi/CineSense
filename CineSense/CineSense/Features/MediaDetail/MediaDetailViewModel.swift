@@ -5,8 +5,8 @@
 //  Created by Neel Joshi on 12/31/25.
 //
 
-import Foundation
 import Combine
+import Foundation
 
 @MainActor
 final class MediaDetailViewModel: ObservableObject {
@@ -18,17 +18,18 @@ final class MediaDetailViewModel: ObservableObject {
 
     @Published var state: State = .loading
 
-    private let tmdbService: TMDBService
+    private let mediaDetailService: MediaDetailService
 
-    init(tmdbService: TMDBService = TMDBService()) {
-        self.tmdbService = tmdbService
+    init(mediaDetailService: MediaDetailService = MediaDetailService()) {
+        self.mediaDetailService = mediaDetailService
     }
 
     func loadDetail(id: Int, mediaType: MediaType) async {
         state = .loading
 
         do {
-            let detail = try await tmdbService.getMediaDetail(id: id, mediaType: mediaType)
+            let detail = try await mediaDetailService.getMediaDetail(id: id, mediaType: mediaType)
+            print(detail)
             state = .loaded(detail)
         } catch {
             state = .failed(error)

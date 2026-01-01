@@ -5,8 +5,8 @@
 //  Created by Neel Joshi on 12/31/25.
 //
 
-import SwiftUI
 import Auth
+import SwiftUI
 
 /// Root tab view with 5 tabs: Home, Search, Discover, Lists, Account
 struct RootTabView: View {
@@ -14,9 +14,9 @@ struct RootTabView: View {
 
     var body: some View {
         TabView {
-            HomeTab()
+            DiscoverTab()
                 .tabItem {
-                    Label("Home", systemImage: "house.fill")
+                    Label("Discover", systemImage: "sparkles")
                 }
 
             SearchView()
@@ -24,9 +24,9 @@ struct RootTabView: View {
                     Label("Search", systemImage: "magnifyingglass")
                 }
 
-            DiscoverTab()
+            FriendsTab()
                 .tabItem {
-                    Label("Discover", systemImage: "sparkles")
+                    Label("Friends", systemImage: "person.3.fill")
                 }
 
             ListsTab()
@@ -72,6 +72,22 @@ private struct DiscoverTab: View {
                     .foregroundColor(.secondary)
             }
             .navigationTitle("Discover")
+        }
+    }
+}
+
+private struct FriendsTab: View {
+    var body: some View {
+        NavigationStack {
+            VStack {
+                Image(systemName: "person.3.fill")
+                    .font(.system(size: 60))
+                    .foregroundStyle(.secondary)
+                Text("Friends")
+                    .font(.title)
+                    .foregroundColor(.secondary)
+            }
+            .navigationTitle("Friends")
         }
     }
 }

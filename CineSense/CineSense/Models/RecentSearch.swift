@@ -6,81 +6,40 @@
 //
 
 import Foundation
-import Combine
+import SwiftData
 
-struct RecentSearch: Identifiable, Codable, Equatable {
-    let id: UUID
-    let query: String
-    let timestamp: Date
+@Model
+final class RecentSearch {
+    @Attribute(.unique) var id: UUID
+    var timestamp: Date
+
+    // For text-based searches
+    var query: String?
+
+    // For media-based searches
+    var mediaId: Int?
+    var mediaType: String? // "movie" or "tv"
+    var mediaTitle: String?
 
     init(query: String) {
-        self.id = UUID()
+        id = UUID()
+        timestamp = Date()
         self.query = query
-        self.timestamp = Date()
-    }
-}
-
-@MainActor
-final class RecentSearchesStore: ObservableObject {
-    private static let storageKey = "recentSearches"
-    private static let maxRecentSearches = 10
-
-    @Published private(set) var recentSearches: [RecentSearch] = []
-
-    init() {
-        loadSearches()
     }
 
-    func addSearch(_ query: String) {
-        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedQuery.isEmpty else { return }
-
-        // Remove existing entry if present
-        recentSearches.removeAll { $0.query.lowercased() == trimmedQuery.lowercased() }
-
-        // Add new search at the beginning
-        let newSearch = RecentSearch(query: trimmedQuery)
-        recentSearches.insert(newSearch, at: 0)
-
-        // Limit to max count
-        if recentSearches.count > Self.maxRecentSearches {
-            recentSearches = Array(recentSearches.prefix(Self.maxRecentSearches))
-        }
-
-        saveSearches()
+    init(mediaId: Int, mediaType: MediaType, title: String) {
+        id = UUID()
+        timestamp = Date()
+        self.mediaId = mediaId
+        self.mediaType = mediaType.rawValue
+        mediaTitle = title
     }
 
-    func removeSearch(_ search: RecentSearch) {
-        recentSearches.removeAll { $0.id == search.id }
-        saveSearches()
+    var displayText: String {
+        mediaTitle ?? query ?? "Unknown"
     }
 
-    func clearAll() {
-        recentSearches.removeAll()
-        saveSearches()
-    }
-
-    private func loadSearches() {
-        guard let data = UserDefaults.standard.data(forKey: Self.storageKey) else {
-            recentSearches = []
-            return
-        }
-
-        do {
-            let decoded = try JSONDecoder().decode([RecentSearch].self, from: data)
-            recentSearches = decoded
-        } catch {
-            print("Failed to decode recent searches: \(error)")
-            recentSearches = []
-        }
-    }
-
-    private func saveSearches() {
-        do {
-            let encoded = try JSONEncoder().encode(recentSearches)
-            UserDefaults.standard.set(encoded, forKey: Self.storageKey)
-        } catch {
-            print("Failed to encode recent searches: \(error)")
-        }
+    var isMediaSearch: Bool {
+        mediaId != nil
     }
 }

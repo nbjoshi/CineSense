@@ -164,23 +164,6 @@ private struct ActionButton: View {
     }
 }
 
-// MARK: - Media Type Badge
-
-private struct MediaTypeBadge: View {
-    let mediaType: MediaType
-
-    var body: some View {
-        Text(mediaType == .movie ? "Movie" : "TV")
-            .font(.caption)
-            .fontWeight(.medium)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(mediaType == .movie ? Color.blue.opacity(0.2) : Color.purple.opacity(0.2))
-            .foregroundColor(mediaType == .movie ? .blue : .purple)
-            .clipShape(Capsule())
-    }
-}
-
 #Preview {
     NavigationStack {
         MediaDetailView(mediaId: 550, mediaType: .movie)

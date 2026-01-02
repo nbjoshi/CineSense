@@ -37,28 +37,29 @@ final class SearchViewModel: ObservableObject {
     }
 
     private let searchService: SearchService
-    private let recentSearchesStore: RecentSearchesStore
     private var searchTask: Task<Void, Never>?
 
     var recentSearches: [RecentSearch] {
-        recentSearchesStore.recentSearches
+        // Recent searches now handled by DiscoverView
+        []
     }
 
-    init(searchService: SearchService = SearchService(), recentSearchesStore: RecentSearchesStore? = nil) {
+    init(searchService: SearchService = SearchService()) {
         self.searchService = searchService
-        self.recentSearchesStore = recentSearchesStore ?? RecentSearchesStore()
     }
 
     func selectRecentSearch(_ search: RecentSearch) {
-        query = search.query
+        if let query = search.query {
+            self.query = query
+        }
     }
 
-    func deleteRecentSearch(_ search: RecentSearch) {
-        recentSearchesStore.removeSearch(search)
+    func deleteRecentSearch(_: RecentSearch) {
+        // Recent searches now handled by DiscoverView
     }
 
     func clearAllRecentSearches() {
-        recentSearchesStore.clearAll()
+        // Recent searches now handled by DiscoverView
     }
 
     private func performSearch() async {
@@ -76,8 +77,6 @@ final class SearchViewModel: ObservableObject {
                 state = .empty
             } else {
                 state = .loaded(mediaSummaries)
-                // Save successful search to recent searches
-                recentSearchesStore.addSearch(query)
             }
         } catch {
             state = .failed(error)

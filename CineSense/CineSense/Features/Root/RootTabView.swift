@@ -6,22 +6,19 @@
 //
 
 import Auth
+import SwiftData
 import SwiftUI
 
 /// Root tab view with 5 tabs: Home, Search, Discover, Lists, Account
 struct RootTabView: View {
     @EnvironmentObject var sessionStore: SessionStore
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         TabView {
-            DiscoverTab()
+            DiscoverView(modelContext: modelContext)
                 .tabItem {
                     Label("Discover", systemImage: "sparkles")
-                }
-
-            SearchView()
-                .tabItem {
-                    Label("Search", systemImage: "magnifyingglass")
                 }
 
             FriendsTab()
@@ -56,22 +53,6 @@ private struct HomeTab: View {
                     .foregroundColor(.secondary)
             }
             .navigationTitle("Home")
-        }
-    }
-}
-
-private struct DiscoverTab: View {
-    var body: some View {
-        NavigationStack {
-            VStack {
-                Image(systemName: "sparkles")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.secondary)
-                Text("Discover")
-                    .font(.title)
-                    .foregroundColor(.secondary)
-            }
-            .navigationTitle("Discover")
         }
     }
 }

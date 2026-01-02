@@ -21,6 +21,8 @@ struct TMDBSearchResult: Decodable {
     let releaseDate: String?
     let firstAirDate: String?
     let posterPath: String?
+    let voteCount: Int?
+    let popularity: Double?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -30,6 +32,8 @@ struct TMDBSearchResult: Decodable {
         case releaseDate = "release_date"
         case firstAirDate = "first_air_date"
         case posterPath = "poster_path"
+        case voteCount = "vote_count"
+        case popularity
     }
 
     func toMediaSummary() -> MediaSummary? {

@@ -17,6 +17,7 @@ final class SearchService {
     )
 
     // MARK: - Search
+
     // Implement Pagination Later
     func multiSearch(query: String, page: Int = 1) async throws -> TMDBSearchMultiResponse {
         let req = APIRequest(

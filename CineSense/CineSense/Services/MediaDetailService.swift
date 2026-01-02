@@ -21,9 +21,9 @@ final class MediaDetailService {
         var path: String
         switch mediaType {
         case .movie:
-            path =  "movie/\(id)"
+            path = "movie/\(id)"
         case .tv:
-            path =  "tv/\(id)"
+            path = "tv/\(id)"
         }
 
         let req = APIRequest(path: path)

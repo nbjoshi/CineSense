@@ -5,11 +5,25 @@
 //  Created by Neel Joshi on 12/31/25.
 //
 
+import SwiftData
 import SwiftUI
 
 @main
 struct CineSenseApp: App {
     @StateObject private var sessionStore = SessionStore()
+
+    var sharedModelContainer: ModelContainer = {
+        let schema = Schema([
+            RecentSearch.self,
+        ])
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+
+        do {
+            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+        } catch {
+            fatalError("Could not create ModelContainer: \(error)")
+        }
+    }()
 
     var body: some Scene {
         WindowGroup {
@@ -31,5 +45,6 @@ struct CineSenseApp: App {
                 await sessionStore.bootstrap()
             }
         }
+        .modelContainer(sharedModelContainer)
     }
 }

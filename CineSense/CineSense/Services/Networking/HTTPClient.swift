@@ -12,6 +12,7 @@ enum HTTPMethod {
     case POST
     case PUT
     case DELETE
+    case PATCH
 }
 
 enum APIError: Error, LocalizedError {

@@ -6,100 +6,136 @@
 //
 
 import PhotosUI
+import SwiftData
 import SwiftUI
+import UIKit
+import AVFoundation
 
 struct SearchView: View {
-    @StateObject private var viewModel = SearchViewModel()
-    @StateObject private var aiViewModel = AiViewModel()
-    @State private var showAiSearch = false
-    @State private var isSearchPresented = false
-    @FocusState private var isSearchFocused: Bool
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         NavigationStack {
-            VStack {
-                switch viewModel.state {
-                case .idle:
-                    if isSearchFocused && !viewModel.recentSearches.isEmpty {
-                        RecentSearchesList(viewModel: viewModel, showAiSearch: $showAiSearch)
-                    } else {
-                        IdleView(showAiSearch: $showAiSearch)
-                    }
-
-                case .loading:
-                    ProgressView("Searching...")
-
-                case let .loaded(results):
-                    List(results) { media in
-                        NavigationLink(value: media) {
-                            MediaSearchRow(media: media)
-                        }
-                    }
-                    .listStyle(.plain)
-
-                case .empty:
-                    ContentUnavailableView(
-                        "No Results",
-                        systemImage: "magnifyingglass.circle",
-                        description: Text("Try a different search term")
-                    )
-
-                case let .failed(error):
-                    ContentUnavailableView(
-                        "Search Failed",
-                        systemImage: "exclamationmark.triangle",
-                        description: Text(error.localizedDescription)
-                    )
-                }
-            }
-            // Per docs/architecture/navigation-and-ui.md:
-            // No default navigation titles; use custom in-view headers
-            .searchable(text: $viewModel.query, isPresented: $isSearchPresented, prompt: "Movies & TV Shows")
-            .navigationDestination(for: MediaSummary.self) { media in
-                MediaDetailView(mediaId: media.id, mediaType: media.mediaType)
-            }
-            .onChange(of: isSearchPresented) { _, newValue in
-                isSearchFocused = newValue
-            }
-            .sheet(isPresented: $showAiSearch) {
-                AiSearchSheet(viewModel: aiViewModel)
-            }
+            SearchViewContent(modelContext: modelContext)
         }
     }
 }
 
-// MARK: - Idle View
+private struct SearchViewContent: View {
+    let modelContext: ModelContext
 
-private struct IdleView: View {
-    @Binding var showAiSearch: Bool
+    @StateObject private var aiViewModel = AiViewModel()
+    @StateObject private var viewModel = SearchViewModel()
+    @StateObject private var recentSearchRepo: RecentSearchRepository
+
+    @State private var showAiSearch = false
+    @State private var isSearchPresented = false
+
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+        _recentSearchRepo = StateObject(wrappedValue: RecentSearchRepository(modelContext: modelContext))
+    }
 
     var body: some View {
-        VStack(spacing: 24) {
-            ContentUnavailableView(
-                "Search Movies & TV Shows",
-                systemImage: "magnifyingglass",
-                description: Text("Enter a title to search")
-            )
+        Group {
+            switch viewModel.state {
+            case .idle:
+                if isSearchPresented || !viewModel.query.isEmpty {
+                    RecentSearchesList(viewModel: viewModel, repository: recentSearchRepo)
+                } else {
+                    IdlePlaceholder()
+                }
 
-            Button {
-                showAiSearch = true
-            } label: {
-                Label("AI Search from Screenshot", systemImage: "sparkles.rectangle.stack")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(
-                        LinearGradient(
-                            colors: [.purple, .blue],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            case .loading:
+                ProgressView("Searching...")
+                    .padding(.top, 16)
+
+            case let .loaded(results):
+                List(results) { media in
+                    NavigationLink(value: media) {
+                        MediaSearchRow(media: media)
+                    }
+                }
+                .listStyle(.plain)
+
+            case .empty:
+                ContentUnavailableView(
+                    "No Results",
+                    systemImage: "magnifyingglass.circle",
+                    description: Text("Try a different search term")
+                )
+
+            case let .failed(error):
+                ContentUnavailableView(
+                    "Search Failed",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(error.localizedDescription)
+                )
             }
-            .padding(.horizontal)
         }
+        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            Color.clear.frame(height: 8)
+        }
+        .toolbar {
+            // LEFT: "Search" label (inline with right button)
+            ToolbarItem(placement: .topBarLeading) {
+                Text("Search")
+                    .font(.title3.bold()) // adjust to taste
+            }
+
+            // RIGHT: AI button
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    showAiSearch = true
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [.purple, .blue],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 32, height: 32)
+
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(.white)
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.bottom)
+        .searchable(
+            text: $viewModel.query,
+            isPresented: $isSearchPresented,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Movies & TV Shows"
+        )
+        .navigationDestination(for: MediaSummary.self) { media in
+            MediaDetailView(mediaId: media.id, mediaType: media.mediaType)
+        }
+        .sheet(isPresented: $showAiSearch) {
+            AiSearchSheet(viewModel: aiViewModel)
+        }
+        .onAppear {
+            viewModel.recentSearchRepository = recentSearchRepo
+        }
+    }
+}
+
+// MARK: - Idle Placeholder
+
+private struct IdlePlaceholder: View {
+    var body: some View {
+        ContentUnavailableView(
+            "Search Movies & TV Shows",
+            systemImage: "magnifyingglass",
+            description: Text("Enter a title to search or use AI search")
+        )
     }
 }
 
@@ -153,29 +189,12 @@ private struct MediaSearchRow: View {
 
 private struct RecentSearchesList: View {
     @ObservedObject var viewModel: SearchViewModel
-    @Binding var showAiSearch: Bool
+    @ObservedObject var repository: RecentSearchRepository
 
     var body: some View {
         List {
             Section {
-                Button {
-                    showAiSearch = true
-                } label: {
-                    HStack {
-                        Image(systemName: "sparkles")
-                            .foregroundColor(.purple)
-                        Text("AI Search from Screenshot")
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-
-            Section {
-                ForEach(viewModel.recentSearches) { search in
+                ForEach(repository.recentSearches) { search in
                     Button {
                         viewModel.selectRecentSearch(search)
                     } label: {
@@ -190,16 +209,16 @@ private struct RecentSearchesList: View {
                 }
                 .onDelete { indexSet in
                     for index in indexSet {
-                        viewModel.deleteRecentSearch(viewModel.recentSearches[index])
+                        repository.delete(repository.recentSearches[index])
                     }
                 }
             } header: {
                 HStack {
                     Text("Recent Searches")
                     Spacer()
-                    if !viewModel.recentSearches.isEmpty {
+                    if !repository.recentSearches.isEmpty {
                         Button("Clear All") {
-                            viewModel.clearAllRecentSearches()
+                            repository.clearAll()
                         }
                         .font(.caption)
                         .textCase(nil)
@@ -218,11 +237,15 @@ private struct AiSearchSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        VStack(spacing: 0) {
+            // Content
             VStack(spacing: 20) {
                 switch viewModel.state {
                 case .idle:
                     AiSearchIdleView(viewModel: viewModel)
+
+                case let .imageSelected(image):
+                    AiImagePreviewView(image: image, viewModel: viewModel)
 
                 case .uploadingImage:
                     ProgressView("Uploading image...")
@@ -231,7 +254,9 @@ private struct AiSearchSheet: View {
                     ProgressView("Identifying with AI...")
 
                 case let .loaded(response):
-                    AiResultsView(response: response, onClose: { dismiss() })
+                    NavigationStack {
+                        AiResultsView(response: response, onClose: { dismiss() })
+                    }
 
                 case let .failed(error):
                     VStack(spacing: 16) {
@@ -251,16 +276,12 @@ private struct AiSearchSheet: View {
                     EmptyView()
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-            }
-            .onDisappear {
-                viewModel.reset()
-            }
+            .padding(.top)
+        }
+        .presentationDetents(viewModel.selectedImage == nil ? [.medium] : [.large])
+        .presentationDragIndicator(.visible)
+        .onDisappear {
+            viewModel.reset()
         }
     }
 }
@@ -270,54 +291,217 @@ private struct AiSearchSheet: View {
 private struct AiSearchIdleView: View {
     @ObservedObject var viewModel: AiViewModel
     @State private var photoItem: PhotosPickerItem?
+    @State private var showCamera = false
 
     var body: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "photo.on.rectangle.angled")
-                .font(.system(size: 60))
-                .foregroundColor(.secondary)
-
+        VStack(spacing: 32) {
             VStack(spacing: 8) {
-                Text("Select a Screenshot")
-                    .font(.title2)
-                    .fontWeight(.semibold)
+                Image(systemName: "sparkles.rectangle.stack")
+                    .font(.system(size: 60))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [.purple, .blue],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
 
-                Text("Choose an image from a movie or TV show to identify it using AI")
+                Text("Identify with AI")
+                    .font(.title2)
+                    .fontWeight(.bold)
+
+                Text("Identify movies or TV shows from a screenshot")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal)
             }
 
-            VStack(spacing: 12) {
-                TextField("Optional: Add a hint", text: $viewModel.textHint)
-                    .textFieldStyle(.roundedBorder)
-                    .padding(.horizontal)
-
+            VStack(spacing: 16) {
+                // Camera Roll option
                 PhotosPicker(selection: $photoItem, matching: .images) {
-                    Label("Choose Image", systemImage: "photo.on.rectangle")
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(
-                            LinearGradient(
-                                colors: [.purple, .blue],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    HStack {
+                        Image(systemName: "photo.on.rectangle")
+                            .font(.title3)
+                        Text("Select from Camera Roll")
+                            .font(.headline)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .foregroundColor(.primary)
+                    .padding()
+                    .background(Color.secondary.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .padding(.horizontal)
                 .onChange(of: photoItem) { _, newItem in
                     Task {
                         await viewModel.selectPhoto(newItem)
                     }
                 }
+
+                Button {
+                    showCamera = true
+                } label: {
+                    HStack {
+                        Image(systemName: "camera")
+                            .font(.title3)
+                        Text("Take a Screenshot")
+                            .font(.headline)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .foregroundColor(.primary)
+                    .padding()
+                    .background(Color.secondary.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
             }
         }
         .padding()
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraCaptureSheet(isPresented: $showCamera) { image in
+                viewModel.state = .imageSelected(image)
+            }
+        }
+    }
+}
+
+
+// MARK: - Camera Capture View
+
+/// UIKit wrapper for the system camera.
+private struct CameraPicker: UIViewControllerRepresentable {
+    let onImagePicked: (UIImage) -> Void
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.cameraCaptureMode = .photo
+        picker.delegate = context.coordinator
+        picker.allowsEditing = false
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onImagePicked: onImagePicked)
+    }
+
+    final class Coordinator: NSObject, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+        let onImagePicked: (UIImage) -> Void
+
+        init(onImagePicked: @escaping (UIImage) -> Void) {
+            self.onImagePicked = onImagePicked
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
+
+        func imagePickerController(
+            _ picker: UIImagePickerController,
+            didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]
+        ) {
+            if let image = info[.originalImage] as? UIImage {
+                onImagePicked(image)
+            }
+            picker.dismiss(animated: true)
+        }
+    }
+}
+
+
+// MARK: - AI Image Preview View
+
+private struct AiImagePreviewView: View {
+    let image: UIImage
+    @ObservedObject var viewModel: AiViewModel
+    @FocusState private var hintFocused: Bool
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                // Hint card
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Hint (optional)")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+
+                    TextField("e.g., “sci-fi series with robots”", text: $viewModel.textHint, axis: .vertical)
+                        .font(.body)
+                        .lineLimit(2...4)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 12)
+                        .background(Color.secondary.opacity(0.10))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+                        )
+                        .focused($hintFocused)
+                }
+                .padding(14)
+                .background(Color.secondary.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+                // Primary action (full width, consistent height)
+                Button {
+                    hintFocused = false
+                    Task { await viewModel.identifySelectedImage() }
+                } label: {
+                    Label("Identify with AI", systemImage: "sparkles")
+                        .font(.headline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                }
+                .buttonStyle(.borderedProminent)
+
+                // Secondary action (same height)
+                Button {
+                    viewModel.clearImage()
+                } label: {
+                    Label("Choose a different image", systemImage: "photo.on.rectangle")
+                        .font(.headline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 54)
+                }
+                .buttonStyle(.bordered)
+                
+                // Big image card
+                ZStack(alignment: .bottomTrailing) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                        .frame(maxHeight: 420)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
+
+                    Button {
+                        viewModel.clearImage()
+                    } label: {
+                        Label("Change", systemImage: "arrow.triangle.2.circlepath")
+                            .font(.subheadline.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(.ultraThinMaterial)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(12)
+                }
+            }
+            .padding(16)
+        }
+        .scrollIndicators(.hidden)
     }
 }
 
@@ -329,24 +513,46 @@ private struct AiResultsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // Summary
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Analysis")
-                        .font(.headline)
+            VStack(alignment: .leading, spacing: 24) {
+                // Summary card with gradient accent
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Image(systemName: "brain.head.profile")
+                            .font(.title3)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.purple, .blue],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+
+                        Text("AI Analysis")
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                    }
+
                     Text(response.querySummary)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                        .lineSpacing(4)
                 }
-                .padding()
+                .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.secondary.opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(Color.secondary.opacity(0.08))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+                )
 
-                // Candidates
-                VStack(alignment: .leading, spacing: 12) {
+                // Candidates section
+                VStack(alignment: .leading, spacing: 16) {
                     Text("Top Matches")
-                        .font(.headline)
+                        .font(.title3)
+                        .fontWeight(.bold)
 
                     ForEach(response.candidates) { candidate in
                         NavigationLink(value: MediaSummary(
@@ -364,24 +570,33 @@ private struct AiResultsView: View {
                     }
                 }
 
-                // Metadata
+                // Metadata footer
                 if let provider = response.provider, let model = response.model {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Powered by \(provider) (\(model))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "sparkles")
+                                .font(.caption2)
+                            Text("Powered by \(provider)")
+                                .font(.caption)
+                        }
+                        .foregroundColor(.secondary)
 
                         if let latency = response.latencyMs {
-                            Text("Processed in \(latency)ms")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            HStack(spacing: 4) {
+                                Image(systemName: "clock")
+                                    .font(.caption2)
+                                Text("Processed in \(latency)ms")
+                                    .font(.caption)
+                            }
+                            .foregroundColor(.secondary)
                         }
                     }
-                    .padding(.top, 8)
+                    .padding(.top, 4)
                 }
             }
-            .padding()
+            .padding(20)
         }
+        .scrollIndicators(.hidden)
     }
 }
 
@@ -391,32 +606,57 @@ private struct AiCandidateRow: View {
     let candidate: Candidate
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            // Poster placeholder (candidates from AI don't have poster paths yet)
-            ZStack {
+        HStack(alignment: .top, spacing: 14) {
+            // Poster placeholder with confidence badge
+            ZStack(alignment: .bottomTrailing) {
                 Rectangle()
-                    .fill(Color.gray.opacity(0.2))
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.secondary.opacity(0.15),
+                                Color.secondary.opacity(0.08)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .overlay {
-                        VStack(spacing: 4) {
-                            Image(systemName: "photo")
-                                .foregroundColor(.gray)
-                                .font(.title3)
-
-                            Text("\(Int(candidate.confidence * 100))%")
-                                .font(.caption2)
-                                .fontWeight(.semibold)
-                                .foregroundColor(.secondary)
-                        }
+                        Image(systemName: "photo")
+                            .foregroundColor(.secondary.opacity(0.5))
+                            .font(.title2)
                     }
-            }
-            .frame(width: 60, height: 90)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
 
-            VStack(alignment: .leading, spacing: 6) {
+                // Confidence badge
+                Text("\(Int(candidate.confidence * 100))%")
+                    .font(.caption2)
+                    .fontWeight(.bold)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(
+                        confidenceColor(for: candidate.confidence)
+                            .opacity(0.9)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    .padding(4)
+            }
+            .frame(width: 70, height: 105)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+            )
+
+            // Content
+            VStack(alignment: .leading, spacing: 8) {
+                // Title
                 Text(candidate.title)
                     .font(.headline)
+                    .fontWeight(.semibold)
                     .lineLimit(2)
+                    .foregroundColor(.primary)
 
+                // Year and type
                 HStack(spacing: 8) {
                     Text(candidate.year)
                         .font(.subheadline)
@@ -425,21 +665,43 @@ private struct AiCandidateRow: View {
                     MediaTypeBadge(mediaType: candidate.type)
                 }
 
+                // Rationale
                 Text(candidate.rationale)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .lineLimit(2)
+                    .lineSpacing(2)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
-            Spacer()
+            Spacer(minLength: 8)
 
+            // Chevron indicator
             Image(systemName: "chevron.right")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .fontWeight(.semibold)
+                .foregroundColor(.secondary.opacity(0.5))
         }
-        .padding()
-        .background(Color.secondary.opacity(0.1))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.secondary.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+        )
+    }
+
+    private func confidenceColor(for confidence: Double) -> Color {
+        switch confidence {
+        case 0.8...:
+            return .green
+        case 0.6..<0.8:
+            return .orange
+        default:
+            return .red
+        }
     }
 }
 

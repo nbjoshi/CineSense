@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct MediaDetailView: View {
     let mediaId: Int
@@ -40,25 +41,31 @@ struct MediaDetailView: View {
 
 private struct DetailContent: View {
     let detail: MediaDetail
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                // Backdrop or Poster Header
+            VStack(alignment: .leading, spacing: 0) {
+                // Backdrop or Poster Header (ignores safe area)
                 if let backdropURL = detail.backdropURL {
-                    AsyncImage(url: backdropURL) { image in
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } placeholder: {
-                        Rectangle()
-                            .fill(Color.gray.opacity(0.3))
-                            .overlay {
-                                ProgressView()
-                            }
+                    GeometryReader { geometry in
+                        AsyncImage(url: backdropURL) { image in
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fill)
+                                .frame(width: geometry.size.width, height: 200)
+                        } placeholder: {
+                            Rectangle()
+                                .fill(Color.gray.opacity(0.3))
+                                .overlay {
+                                    ProgressView()
+                                }
+                                .frame(width: geometry.size.width, height: 200)
+                        }
+                        .clipped()
                     }
                     .frame(height: 200)
-                    .clipped()
+                    .ignoresSafeArea(edges: .top)
                 }
 
                 VStack(alignment: .leading, spacing: 16) {
@@ -133,9 +140,59 @@ private struct DetailContent: View {
                     }
                 }
                 .padding(.horizontal)
+                .padding(.top, 20)
             }
         }
+        .overlay(alignment: .topLeading) {
+            Button {
+                dismiss()
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .frame(width: 36, height: 36)
+
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.primary)
+                }
+            }
+            .padding(.top, 8)
+            .padding(.leading, 16)
+        }
+        .navigationBarBackButtonHidden(true)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .navigationBar)
+        .background(NavigationControllerConfigurator())
+    }
+}
+
+// MARK: - Navigation Controller Configurator
+
+private struct NavigationControllerConfigurator: UIViewControllerRepresentable {
+    func makeUIViewController(context: Context) -> NavigationControllerConfiguratorViewController {
+        NavigationControllerConfiguratorViewController()
+    }
+
+    func updateUIViewController(_ uiViewController: NavigationControllerConfiguratorViewController, context: Context) {
+        uiViewController.configure()
+    }
+}
+
+private class NavigationControllerConfiguratorViewController: UIViewController {
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        view.isHidden = true
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        configure()
+    }
+
+    func configure() {
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+        navigationController?.interactivePopGestureRecognizer?.delegate = nil
     }
 }
 

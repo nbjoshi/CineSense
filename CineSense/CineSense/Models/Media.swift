@@ -58,6 +58,16 @@ struct MediaDetail: Identifiable {
         guard let backdropPath = backdropPath else { return nil }
         return URL(string: "\(TMDBConfig.imageBaseURL)w780\(backdropPath)")
     }
+
+    func toMediaSummary() -> MediaSummary {
+        MediaSummary(
+            id: id,
+            mediaType: mediaType,
+            title: title,
+            releaseDate: releaseDate,
+            posterPath: posterPath
+        )
+    }
 }
 
 // MARK: - Decodable
@@ -86,11 +96,14 @@ extension MediaDetail: Decodable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         id = try container.decode(Int.self, forKey: .id)
-        overview = try container.decode(String.self, forKey: .overview)
+
+        // List endpoints don't include overview; detail endpoints do
+        overview = try container.decodeIfPresent(String.self, forKey: .overview) ?? ""
+
         posterPath = try container.decodeIfPresent(String.self, forKey: .posterPath)
         backdropPath = try container.decodeIfPresent(String.self, forKey: .backdropPath)
         runtime = try container.decodeIfPresent(Int.self, forKey: .runtime)
-        voteAverage = try container.decode(Double.self, forKey: .voteAverage)
+        voteAverage = try container.decodeIfPresent(Double.self, forKey: .voteAverage) ?? 0.0
 
         // Handle movie vs TV differences
         if let movieTitle = try? container.decode(String.self, forKey: .title) {
@@ -106,7 +119,13 @@ extension MediaDetail: Decodable {
         }
 
         // Parse genres from array of objects
-        let genreObjects = try container.decode([Genre].self, forKey: .genres)
+        // List endpoints don't include genres; detail endpoints do
+        let genreObjects = try container.decodeIfPresent([Genre].self, forKey: .genres) ?? []
         genres = genreObjects.map { $0.name }
     }
+}
+
+struct Results: Decodable {
+    let page: Int
+    let results: [MediaDetail]
 }

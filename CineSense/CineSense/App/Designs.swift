@@ -8,48 +8,62 @@
 import Foundation
 import SwiftUI
 
-// MARK: - Design System (CineSense)
+// MARK: - Spotify-ish Design System (CineSense)
 
 enum DS {
-    // Spacing
-    static let xs: CGFloat = 6
-    static let sm: CGFloat = 10
+    // Spacing (Spotify tends to be a bit tighter with strong rhythm)
+    static let xxs: CGFloat = 4
+    static let xs: CGFloat = 8
+    static let sm: CGFloat = 12
     static let md: CGFloat = 16
     static let lg: CGFloat = 24
     static let xl: CGFloat = 32
 
-    // Corners
-    static let radiusSm: CGFloat = 12
-    static let radiusMd: CGFloat = 16
-    static let radiusLg: CGFloat = 22
+    // Corners (Spotify cards are usually subtle-rounded, not super pill-y)
+    static let radiusSm: CGFloat = 10
+    static let radiusMd: CGFloat = 14
+    static let radiusLg: CGFloat = 18
 
     // Layout
-    static let maxContentWidth: CGFloat = 520
+    static let maxContentWidth: CGFloat = 560
+
+    enum Colors {
+        // Spotify-like dark theme tokens
+        static let background = Color(hex: 0x121212)   // main app background
+        static let surface    = Color(hex: 0x181818)   // cards, list rows
+        static let elevated   = Color(hex: 0x242424)   // pressed/hover/elevated surfaces
+        static let divider    = Color.white.opacity(0.08)
+
+        static let textPrimary   = Color.white
+        static let textSecondary = Color(hex: 0xB3B3B3)
+
+        // Spotify green (use your accent asset if you have one; this is safe fallback)
+        static let accent = Color(hex: 0x1DB954)
+        static let accentAlt = Color(hex: 0x1ED760)
+        static let danger = Color.red
+        static let info = Color.blue
+        static let success = Color.green
+    }
 }
 
-// MARK: - Typography
+// MARK: - Typography (Spotify-like hierarchy: bold headers + readable body)
 
 extension Font {
-    static let csHeroTitle = Font.system(.largeTitle, design: .rounded).weight(.bold)
-    static let csTitle = Font.system(.title2, design: .rounded).weight(.bold)
-    static let csHeadline = Font.system(.headline, design: .rounded).weight(.semibold)
-    static let csBody = Font.system(.body, design: .default)
-    static let csSubhead = Font.system(.subheadline, design: .default)
-    static let csCaption = Font.system(.caption, design: .default)
+    static let spLargeTitle = Font.system(size: 34, weight: .bold, design: .default)
+    static let spTitle = Font.system(size: 22, weight: .bold, design: .default)
+    static let spHeadline = Font.system(size: 17, weight: .semibold, design: .default)
+    static let spBody = Font.system(size: 16, weight: .regular, design: .default)
+    static let spSubhead = Font.system(size: 14, weight: .regular, design: .default)
+    static let spCaption = Font.system(size: 12, weight: .regular, design: .default)
 }
 
-// MARK: - Surfaces
+// MARK: - Base Surfaces / Layout Helpers
 
 extension View {
-    /// A consistent card surface that looks great in dark mode.
-    func csCard() -> some View {
-        padding(DS.md)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radiusMd, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: DS.radiusMd, style: .continuous)
-                    .strokeBorder(.white.opacity(0.10), lineWidth: 1)
-            )
+    /// App default background (Spotify-like)
+    func csAppBackground() -> some View {
+        background(DS.Colors.background)
+            .foregroundStyle(DS.Colors.textPrimary)
     }
 
     /// Standard horizontal page padding.
@@ -61,6 +75,28 @@ extension View {
     func csContentWidth() -> some View {
         frame(maxWidth: DS.maxContentWidth)
     }
+
+    /// Spotify-ish card surface (solid dark, subtle border).
+    func csCard() -> some View {
+        padding(DS.md)
+            .background(DS.Colors.surface)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radiusMd, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.radiusMd, style: .continuous)
+                    .strokeBorder(DS.Colors.divider, lineWidth: 1)
+            )
+    }
+
+    /// A slightly elevated surface (good for pressed state or modals).
+    func csElevatedCard() -> some View {
+        padding(DS.md)
+            .background(DS.Colors.elevated)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radiusMd, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.radiusMd, style: .continuous)
+                    .strokeBorder(DS.Colors.divider, lineWidth: 1)
+            )
+    }
 }
 
 // MARK: - Buttons
@@ -70,18 +106,19 @@ struct CSPrimaryButtonStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.csHeadline)
+            .font(.spHeadline)
             .frame(maxWidth: .infinity, minHeight: 50)
             .padding(.horizontal, DS.md)
             .background(
                 RoundedRectangle(cornerRadius: DS.radiusMd, style: .continuous)
-                    .fill(Color.accentColor)
-                    .opacity(configuration.isPressed ? 0.85 : 1.0)
+                    .fill(DS.Colors.accent)
+                    .opacity(configuration.isPressed ? 0.88 : 1.0)
             )
-            .foregroundStyle(.white)
+            // Spotify buttons often use dark text on green
+            .foregroundStyle(Color.black.opacity(0.92))
             .overlay(
                 RoundedRectangle(cornerRadius: DS.radiusMd, style: .continuous)
-                    .strokeBorder(.white.opacity(0.10), lineWidth: 1)
+                    .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
             )
     }
 }
@@ -89,44 +126,64 @@ struct CSPrimaryButtonStyle: ButtonStyle {
 struct CSSecondaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.csHeadline)
+            .font(.spHeadline)
             .frame(maxWidth: .infinity, minHeight: 46)
             .padding(.horizontal, DS.md)
             .background(
                 RoundedRectangle(cornerRadius: DS.radiusMd, style: .continuous)
-                    .fill(Color.primary.opacity(0.08))
-                    .opacity(configuration.isPressed ? 0.70 : 1.0)
+                    .fill(configuration.isPressed ? DS.Colors.elevated : DS.Colors.surface)
             )
-            .foregroundStyle(.primary)
+            .foregroundStyle(DS.Colors.textPrimary)
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.radiusMd, style: .continuous)
+                    .strokeBorder(DS.Colors.divider, lineWidth: 1)
+            )
+    }
+}
+
+/// Small icon button (useful for Spotify-style headers)
+struct CSIconButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(width: 36, height: 36)
+            .background(
+                Circle()
+                    .fill(configuration.isPressed ? DS.Colors.elevated : DS.Colors.surface)
+            )
+            .overlay(
+                Circle()
+                    .strokeBorder(DS.Colors.divider, lineWidth: 1)
+            )
+            .foregroundStyle(DS.Colors.textPrimary)
     }
 }
 
 // MARK: - Inputs
 
-struct CSEmailFieldStyle: ViewModifier {
+struct CSTextFieldStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
-            .padding()
+            .padding(.vertical, 12)
+            .padding(.horizontal, DS.md)
             .background(
                 RoundedRectangle(cornerRadius: DS.radiusSm, style: .continuous)
-                    .fill(Color.primary.opacity(0.06))
+                    .fill(DS.Colors.elevated)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: DS.radiusSm, style: .continuous)
-                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
+                    .strokeBorder(DS.Colors.divider, lineWidth: 1)
             )
+            .foregroundStyle(DS.Colors.textPrimary)
     }
 }
 
 extension View {
-    func csEmailField() -> some View {
-        modifier(CSEmailFieldStyle())
-    }
+    func csTextField() -> some View { modifier(CSTextFieldStyle()) }
 }
 
-// MARK: - Empty / Error / Success
+// MARK: - Empty / Error / Info
 
 struct CSInlineMessage: View {
     enum Kind { case success, error, info }
@@ -144,9 +201,9 @@ struct CSInlineMessage: View {
 
     private var tint: Color {
         switch kind {
-        case .success: return .green
-        case .error: return .red
-        case .info: return .blue
+        case .success: return DS.Colors.success
+        case .error: return DS.Colors.danger
+        case .info: return DS.Colors.info
         }
     }
 
@@ -157,16 +214,38 @@ struct CSInlineMessage: View {
                 .font(.system(size: 18, weight: .semibold))
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.csSubhead).fontWeight(.semibold)
+                Text(title)
+                    .font(.spSubhead)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(DS.Colors.textPrimary)
+
                 if let message, !message.isEmpty {
-                    Text(message).font(.csCaption).foregroundStyle(.secondary)
+                    Text(message)
+                        .font(.spCaption)
+                        .foregroundStyle(DS.Colors.textSecondary)
                 }
             }
 
             Spacer(minLength: 0)
         }
         .padding(DS.md)
-        .background(tint.opacity(0.10))
+        .background(DS.Colors.elevated)
         .clipShape(RoundedRectangle(cornerRadius: DS.radiusSm, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: DS.radiusSm, style: .continuous)
+                .strokeBorder(tint.opacity(0.35), lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Utilities
+
+extension Color {
+    /// Hex color convenience (e.g., 0x121212)
+    init(hex: UInt, alpha: Double = 1.0) {
+        let r = Double((hex >> 16) & 0xFF) / 255.0
+        let g = Double((hex >> 8) & 0xFF) / 255.0
+        let b = Double(hex & 0xFF) / 255.0
+        self.init(.sRGB, red: r, green: g, blue: b, opacity: alpha)
     }
 }

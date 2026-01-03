@@ -53,8 +53,8 @@ struct DiscoverView: View {
                 contentView
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Discover")
-            .navigationBarTitleDisplayMode(.large)
+            // Per docs/architecture/navigation-and-ui.md:
+            // No default navigation titles; use custom in-view headers
             .navigationDestination(for: MediaSummary.self) { media in
                 MediaDetailView(mediaId: media.id, mediaType: media.mediaType)
             }
@@ -342,52 +342,6 @@ private struct MediaCarouselSection: View {
                 }
                 .padding(.horizontal, 20)
             }
-        }
-    }
-}
-
-// MARK: - Media Poster Card
-
-private struct MediaPosterCard: View {
-    let media: MediaSummary
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Poster
-            AsyncImage(url: media.posterURL) { phase in
-                switch phase {
-                case .empty:
-                    Rectangle()
-                        .fill(Color(.systemGray5))
-                        .overlay {
-                            ProgressView()
-                        }
-                case let .success(image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                case .failure:
-                    Rectangle()
-                        .fill(Color(.systemGray6))
-                        .overlay {
-                            Image(systemName: "photo")
-                                .foregroundStyle(.secondary)
-                        }
-                @unknown default:
-                    Rectangle().fill(Color(.systemGray5))
-                }
-            }
-            .frame(width: 140, height: 210)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
-
-            // Title
-            Text(media.title)
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(.primary)
-                .lineLimit(2)
-                .frame(width: 140, alignment: .leading)
         }
     }
 }
@@ -887,8 +841,6 @@ private struct AIPhotoPickerSheet: View {
                 }
                 .padding(.vertical, 24)
             }
-            .navigationTitle("AI Search")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

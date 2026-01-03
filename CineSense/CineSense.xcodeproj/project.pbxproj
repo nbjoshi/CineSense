@@ -8,10 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		180017982F05EDF3004C8F1F /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 909362176D312EDC97E4943B /* Supabase */; };
+		18D961F32F08BDD6009E49F1 /* CLAUDE.md in Resources */ = {isa = PBXBuildFile; fileRef = 18D961F22F08BDD6009E49F1 /* CLAUDE.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		180017212F05DBFF004C8F1F /* CineSense.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CineSense.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		180017212F05DBFF004C8F1F /* CineSense.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = CineSense.app; path = "/Users/neel/Developer/CineSense/CineSense/build/Debug-iphoneos/CineSense.app"; sourceTree = "<absolute>"; };
+		18D961F22F08BDD6009E49F1 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -33,6 +35,11 @@
 			path = CineSense;
 			sourceTree = "<group>";
 		};
+		18D961C82F08B9C9009E49F1 /* docs */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = docs;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -50,17 +57,10 @@
 		180017182F05DBFF004C8F1F = {
 			isa = PBXGroup;
 			children = (
+				18D961C82F08B9C9009E49F1 /* docs */,
 				180017232F05DBFF004C8F1F /* CineSense */,
-				180017222F05DBFF004C8F1F /* Products */,
+				18D961F22F08BDD6009E49F1 /* CLAUDE.md */,
 			);
-			sourceTree = "<group>";
-		};
-		180017222F05DBFF004C8F1F /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				180017212F05DBFF004C8F1F /* CineSense.app */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -80,6 +80,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				180017232F05DBFF004C8F1F /* CineSense */,
+				18D961C82F08B9C9009E49F1 /* docs */,
 			);
 			name = CineSense;
 			packageProductDependencies = (
@@ -117,7 +118,7 @@
 				180017392F05E3CE004C8F1F /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 180017222F05DBFF004C8F1F /* Products */;
+			productRefGroup = 180017182F05DBFF004C8F1F;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -131,6 +132,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				18D961F32F08BDD6009E49F1 /* CLAUDE.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

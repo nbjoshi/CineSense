@@ -75,6 +75,8 @@ final class HTTPClient {
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
+            print(error)
+            print(data)
             throw APIError.decoding(error)
         }
     }
@@ -119,9 +121,9 @@ final class HTTPClient {
             request.setValue(v, forHTTPHeaderField: k)
         }
 
-        if req.body != nil && request.value(forHTTPHeaderField: "Content-Type") == nil {
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        }
+        // Per docs/architecture/http-client.md:
+        // Do NOT set default Content-Type globally.
+        // Each service/request must explicitly set headers as needed.
 
         return request
     }

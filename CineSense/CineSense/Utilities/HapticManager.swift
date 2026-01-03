@@ -8,7 +8,6 @@
 import SwiftUI
 import UIKit
 
-/// Centralized haptic feedback manager for consistent UX
 enum HapticManager {
     // MARK: - Impact Feedback
 
@@ -67,7 +66,6 @@ enum HapticManager {
 // MARK: - View Extension for Haptics
 
 extension View {
-    /// Adds haptic feedback on tap
     func hapticFeedback(_ style: UIImpactFeedbackGenerator.FeedbackStyle = .light) -> some View {
         simultaneousGesture(
             TapGesture()
@@ -77,7 +75,6 @@ extension View {
         )
     }
 
-    /// Adds success haptic feedback
     func successHaptic() -> some View {
         simultaneousGesture(
             TapGesture()

@@ -23,10 +23,10 @@ struct AuthView: View {
                         .padding(.top, DS.xl)
 
                     Text("CineSense")
-                        .font(.csHeroTitle)
+                        .font(.spLargeTitle)
 
                     Text(sessionStore.authMode.subtitle)
-                        .font(.csSubhead)
+                        .font(.spSubhead)
                         .foregroundStyle(.secondary)
                 }
                 .padding(.bottom, DS.lg)
@@ -44,7 +44,7 @@ struct AuthView: View {
                     // Email Field
                     VStack(alignment: .leading, spacing: DS.sm) {
                         Text("Email")
-                            .font(.csSubhead)
+                            .font(.spSubhead)
                             .fontWeight(.medium)
                             .foregroundStyle(.secondary)
 
@@ -53,7 +53,7 @@ struct AuthView: View {
                             .keyboardType(.emailAddress)
                             .focused($isEmailFocused)
                             .disabled(sessionStore.isSubmitting || sessionStore.didSubmit)
-                            .csEmailField()
+                            .csTextField()
                     }
 
                     // Primary Action Button

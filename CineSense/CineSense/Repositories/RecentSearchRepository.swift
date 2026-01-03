@@ -28,6 +28,7 @@ final class RecentSearchRepository: ObservableObject {
             sortBy: [SortDescriptor(\.timestamp, order: .reverse)]
         )
         recentSearches = (try? modelContext.fetch(descriptor)) ?? []
+        print("LoadSearches: \(recentSearches)")
     }
 
     // MARK: - Add

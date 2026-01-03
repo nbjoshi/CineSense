@@ -22,7 +22,8 @@ enum RailState {
 @MainActor
 final class HomeViewModel: ObservableObject {
     // Per-rail states for granular loading/error handling
-    @Published var recommendedState: RailState = .idle
+    @Published var nowPlayingState: RailState = .idle
+    @Published var popularState: RailState = .idle
     @Published var trendingState: RailState = .idle
     @Published var popularMoviesState: RailState = .idle
     @Published var popularTVState: RailState = .idle
@@ -40,7 +41,8 @@ final class HomeViewModel: ObservableObject {
     /// Per docs/features/home.md: progressive rendering, loads quickly
     func loadAllRails() async {
         // Set all to loading
-        recommendedState = .loading
+        nowPlayingState = .loading
+        popularState = .loading
         trendingState = .loading
         popularMoviesState = .loading
         popularTVState = .loading
@@ -50,7 +52,9 @@ final class HomeViewModel: ObservableObject {
 
         await withTaskGroup(of: Void.self) { group in
             // Recommended (using popular as proxy for now)
-            group.addTask { await self.loadRecommended() }
+            group.addTask { await self.loadNowPlaying() }
+            
+            group.addTask { await self.loadPopular() }
 
             // Trending
             group.addTask { await self.loadTrending() }
@@ -73,15 +77,25 @@ final class HomeViewModel: ObservableObject {
     }
 
     // MARK: - Individual Rail Loaders
+    
+    private func loadNowPlaying() async {
+        do {
+            let results = try await discoverService.getNowPlaying()
+            let media = results.results.map { $0.toMediaSummary() }
+            nowPlayingState = media.isEmpty ? .empty : .loaded(media)
+        } catch {
+            nowPlayingState = .failed(error)
+        }
+    }
 
-    private func loadRecommended() async {
+    private func loadPopular() async {
         do {
             // Proxy: use popular for now
             let results = try await discoverService.getPopular(mediaType: "movie")
             let media = results.results.map { $0.toMediaSummary() }
-            recommendedState = media.isEmpty ? .empty : .loaded(media)
+            popularState = media.isEmpty ? .empty : .loaded(media)
         } catch {
-            recommendedState = .failed(error)
+            popularState = .failed(error)
         }
     }
 

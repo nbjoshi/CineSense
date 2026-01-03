@@ -22,11 +22,14 @@ struct HomeView: View {
                     Color.clear
                         .frame(height: 1)
                         .padding(.top, DS.xs)
+                    
+                    // Now Playing Rail
+                    RailSection(title: "Now Playing", state: viewModel.nowPlayingState, onTap: handleMediaTap)
 
                     // Recommended Rail
                     RailSection(
-                        title: "Recommended for You",
-                        state: viewModel.recommendedState,
+                        title: "Popular",
+                        state: viewModel.popularState,
                         onTap: handleMediaTap
                     )
 
@@ -67,7 +70,7 @@ struct HomeView: View {
 
                     // On Air TV Rail
                     RailSection(
-                        title: "On the Air",
+                        title: "Shows On the Air",
                         state: viewModel.onAirState,
                         onTap: handleMediaTap
                     )
@@ -82,7 +85,7 @@ struct HomeView: View {
                 MediaDetailView(mediaId: media.id, mediaType: media.mediaType)
             }
             .task {
-                if case .idle = viewModel.recommendedState {
+                if case .idle = viewModel.popularState {
                     await viewModel.loadAllRails()
                 }
             }

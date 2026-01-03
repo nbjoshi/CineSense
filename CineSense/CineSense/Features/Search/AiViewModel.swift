@@ -15,6 +15,7 @@ final class AiViewModel: ObservableObject {
     enum State {
         case idle
         case selectingImage
+        case imageSelected(UIImage) // New state to show image before identifying
         case uploadingImage
         case identifying
         case loaded(AiIdentifyResponse)
@@ -23,6 +24,7 @@ final class AiViewModel: ObservableObject {
 
     @Published var state: State = .idle
     @Published var selectedPhoto: PhotosPickerItem?
+    @Published var selectedImage: UIImage?
     @Published var textHint: String = ""
 
     private let aiService: AIService
@@ -36,17 +38,34 @@ final class AiViewModel: ObservableObject {
         selectedPhoto = item
         guard let item else { return }
 
+        do {
+            // Load image data to show preview
+            guard let data = try await item.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data) else {
+                throw AIServiceError.uploadFailed
+            }
+
+            selectedImage = image
+            state = .imageSelected(image)
+        } catch {
+            state = .failed(error)
+        }
+    }
+
+    func identifySelectedImage() async {
+        guard let selectedPhoto else { return }
+
         state = .uploadingImage
 
         do {
             // Load image data from PhotosPickerItem
-            guard let data = try await item.loadTransferable(type: Data.self) else {
+            guard let data = try await selectedPhoto.loadTransferable(type: Data.self) else {
                 throw AIServiceError.uploadFailed
             }
 
             // Determine content type (default to JPEG)
             let contentType: String
-            if let mimeType = item.supportedContentTypes.first?.preferredMIMEType {
+            if let mimeType = selectedPhoto.supportedContentTypes.first?.preferredMIMEType {
                 contentType = mimeType
             } else {
                 contentType = "image/jpeg"
@@ -71,6 +90,12 @@ final class AiViewModel: ObservableObject {
         }
     }
 
+    func clearImage() {
+        selectedPhoto = nil
+        selectedImage = nil
+        state = .idle
+    }
+
     func reset() {
         identifyTask?.cancel()
         state = .idle
@@ -84,6 +109,24 @@ final class AiViewModel: ObservableObject {
             identifyTask = Task {
                 await selectPhoto(photo)
             }
+        }
+    }
+}
+
+extension AiViewModel {
+    @MainActor
+    func selectCameraImage(_ image: UIImage) {
+        self.state = .imageSelected(image)
+    }
+}
+
+private extension AiViewModel {
+    var stateIsPreviewLike: Bool {
+        switch state {
+        case .imageSelected, .uploadingImage, .identifying, .loaded, .failed:
+            return true
+        case .idle, .selectingImage:
+            return false
         }
     }
 }

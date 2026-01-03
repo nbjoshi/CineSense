@@ -9,31 +9,36 @@ import Auth
 import SwiftData
 import SwiftUI
 
-/// Root tab view with 5 tabs: Home, Search, Discover, Lists, Account
+/// Root tab view with exactly 4 tabs: Home, Search, Lists, Profile
+/// Per docs/architecture/decisions.md and docs/architecture/navigation-and-ui.md
 struct RootTabView: View {
     @EnvironmentObject var sessionStore: SessionStore
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         TabView {
-            DiscoverView(modelContext: modelContext)
+            // Home tab - Spotify-style rails
+            HomeView()
                 .tabItem {
-                    Label("Discover", systemImage: "sparkles")
+                    Label("Home", systemImage: "house.fill")
                 }
 
-            FriendsTab()
+            // Search tab - includes text search + AI search
+            SearchView()
                 .tabItem {
-                    Label("Friends", systemImage: "person.3.fill")
+                    Label("Search", systemImage: "magnifyingglass")
                 }
 
+            // Lists tab
             ListsTab()
                 .tabItem {
                     Label("Lists", systemImage: "list.bullet")
                 }
 
-            AccountTab()
+            // Profile tab (renamed from Account)
+            ProfileTab()
                 .tabItem {
-                    Label("Account", systemImage: "person.fill")
+                    Label("Profile", systemImage: "person.fill")
                 }
         }
     }
@@ -41,58 +46,32 @@ struct RootTabView: View {
 
 // MARK: - Tab Placeholders
 
-private struct HomeTab: View {
-    var body: some View {
-        NavigationStack {
-            VStack {
-                Image(systemName: "house.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.secondary)
-                Text("Home")
-                    .font(.title)
-                    .foregroundColor(.secondary)
-            }
-            .navigationTitle("Home")
-        }
-    }
-}
-
-private struct FriendsTab: View {
-    var body: some View {
-        NavigationStack {
-            VStack {
-                Image(systemName: "person.3.fill")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.secondary)
-                Text("Friends")
-                    .font(.title)
-                    .foregroundColor(.secondary)
-            }
-            .navigationTitle("Friends")
-        }
-    }
-}
-
 private struct ListsTab: View {
     var body: some View {
+        // Per docs: no default navigation titles
         NavigationStack {
-            VStack {
+            VStack(spacing: 16) {
                 Image(systemName: "list.bullet")
                     .font(.system(size: 60))
                     .foregroundStyle(.secondary)
                 Text("Lists")
                     .font(.title)
                     .foregroundColor(.secondary)
+                Text("Coming Soon")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
             }
-            .navigationTitle("Lists")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color(.systemGroupedBackground))
         }
     }
 }
 
-private struct AccountTab: View {
+private struct ProfileTab: View {
     @EnvironmentObject var sessionStore: SessionStore
 
     var body: some View {
+        // Per docs: no default navigation titles
         NavigationStack {
             List {
                 Section("Debug Panel") {
@@ -126,7 +105,6 @@ private struct AccountTab: View {
                     }
                 }
             }
-            .navigationTitle("Account")
         }
     }
 }

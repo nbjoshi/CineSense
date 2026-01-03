@@ -52,7 +52,8 @@ struct SearchView: View {
                     )
                 }
             }
-            .navigationTitle("Search")
+            // Per docs/architecture/navigation-and-ui.md:
+            // No default navigation titles; use custom in-view headers
             .searchable(text: $viewModel.query, isPresented: $isSearchPresented, prompt: "Movies & TV Shows")
             .navigationDestination(for: MediaSummary.self) { media in
                 MediaDetailView(mediaId: media.id, mediaType: media.mediaType)
@@ -250,8 +251,6 @@ private struct AiSearchSheet: View {
                     EmptyView()
                 }
             }
-            .navigationTitle("AI Search")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

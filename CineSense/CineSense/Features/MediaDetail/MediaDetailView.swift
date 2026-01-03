@@ -38,46 +38,59 @@ struct MediaDetailView: View {
 }
 
 // MARK: - Detail Content
+private let headerHeight: CGFloat = 380
+private let headerSideInset: CGFloat = 16
+private let headerCornerRadius: CGFloat = 18
 
 private struct DetailContent: View {
     let detail: MediaDetail
     @Environment(\.dismiss) private var dismiss
-    private let headerHeight: CGFloat = 320
-
+    private let headerHeight: CGFloat = 380
+    
     var body: some View {
         GeometryReader { proxy in
             let topInset = proxy.safeAreaInsets.top
+            let headerWidth = proxy.size.width - (headerSideInset * 2)
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    GeometryReader { geo in
-                                        let minY = geo.frame(in: .named("scroll")).minY
-                                        let y = min(0, minY)              // ✅ only negative values
-                                        // no stretching:
-                                        header
-                                            .frame(height: headerHeight)
-                                            .frame(maxWidth: .infinity)
-                                            .clipped()
-                                            .offset(y: y)                 // ✅ moves up with scroll
-                                    }
-                                    .frame(height: headerHeight)
-                                    .ignoresSafeArea(edges: .top)
+                    
+                    // ✅ Header that is already behind the notch on first render
+                    ZStack(alignment: .bottom) {
+                        headerImage
+                            .frame(width: headerWidth, height: headerHeight + topInset)
+                            .frame(maxWidth: .infinity)
+                            .clipped()
+                        
+                        // gradient overlay
+                        LinearGradient(
+                            colors: [
+                                Color.black.opacity(0),
+                                Color.black.opacity(0.75)
+                            ],
+                            startPoint: .center,
+                            endPoint: .bottom
+                        )
+                        .frame(height: (headerHeight + topInset) * 0.45)
+                    }
+                    
+                    // Your existing content (unchanged)
                     VStack(alignment: .leading, spacing: 16) {
                         // Title and Year
                         VStack(alignment: .leading, spacing: 16) {
                             Text(detail.title)
                                 .font(.title)
                                 .fontWeight(.bold)
-
+                            
                             HStack(spacing: 8) {
                                 if let year = detail.year {
                                     Text(year)
                                         .font(.subheadline)
                                         .foregroundColor(.secondary)
                                 }
-
+                                
                                 MediaTypeBadge(mediaType: detail.mediaType)
-
+                                
                                 if let runtime = detail.runtime {
                                     Text("\(runtime) min")
                                         .font(.subheadline)
@@ -85,14 +98,14 @@ private struct DetailContent: View {
                                 }
                             }
                         }
-
+                        
                         // Action Buttons
                         HStack(spacing: 12) {
                             ActionButton(icon: "plus", label: "Watchlist")
                             ActionButton(icon: "heart", label: "Favorite")
                             ActionButton(icon: "square.and.arrow.up", label: "Share")
                         }
-
+                        
                         // Genres
                         if !detail.genres.isEmpty {
                             ScrollView(.horizontal, showsIndicators: false) {
@@ -108,7 +121,7 @@ private struct DetailContent: View {
                                 }
                             }
                         }
-
+                        
                         // Rating
                         if detail.voteAverage > 0 {
                             HStack(spacing: 4) {
@@ -122,12 +135,12 @@ private struct DetailContent: View {
                                     .foregroundColor(.secondary)
                             }
                         }
-
+                        
                         // Overview
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Overview")
                                 .font(.headline)
-
+                            
                             Text(detail.overview.isEmpty ? "No overview available." : detail.overview)
                                 .font(.body)
                                 .foregroundColor(.secondary)
@@ -137,42 +150,44 @@ private struct DetailContent: View {
                     .padding(.top, 20)
                 }
             }
-            .coordinateSpace(name: "scroll")
+            .ignoresSafeArea(edges: .top)
+            
             .overlay(alignment: .topLeading) {
-                Button {
-                    dismiss()
-                } label: {
+                Button { dismiss() } label: {
                     ZStack {
                         Circle()
                             .fill(.ultraThinMaterial)
                             .frame(width: 36, height: 36)
-
+                        
                         Image(systemName: "chevron.left")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(.primary)
                     }
                 }
-                .padding(.top, 8)
                 .padding(.leading, 16)
+                .safeAreaPadding(.top, 6)
             }
             .navigationBarBackButtonHidden(true)
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .background(NavigationControllerConfigurator())
         }
     }
-
+    
     @ViewBuilder
-    private var header: some View {
+    private var headerImage: some View {
         if let backdropURL = detail.backdropURL {
             AsyncImage(url: backdropURL) { image in
                 image
                     .resizable()
+                    .scaledToFill()   // ✅ centered fill
             } placeholder: {
                 Rectangle()
                     .fill(Color.gray.opacity(0.3))
                     .overlay { ProgressView() }
             }
+        } else {
+            Rectangle()
+                .fill(Color.gray.opacity(0.3))
         }
     }
 }

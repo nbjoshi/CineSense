@@ -22,6 +22,7 @@ final class SearchViewModel: ObservableObject {
     @Published var state: State = .idle
     @Published var query: String = "" {
         didSet {
+            guard !suppressDebounce else { return }
             searchTask?.cancel()
             if query.isEmpty {
                 state = .idle
@@ -39,6 +40,7 @@ final class SearchViewModel: ObservableObject {
     private let searchService: SearchService
     var recentSearchRepository: RecentSearchRepository?
     private var searchTask: Task<Void, Never>?
+    private var suppressDebounce = false
 
     var recentSearches: [RecentSearch] {
         recentSearchRepository?.recentSearches ?? []
@@ -61,6 +63,17 @@ final class SearchViewModel: ObservableObject {
 
     func clearAllRecentSearches() {
         recentSearchRepository?.clearAll()
+    }
+
+    func searchNow(_ searchQuery: String) {
+        searchTask?.cancel()
+        suppressDebounce = true
+        query = searchQuery
+        suppressDebounce = false
+
+        searchTask = Task {
+            await performSearch()
+        }
     }
 
     private func performSearch() async {

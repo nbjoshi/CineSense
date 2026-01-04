@@ -12,8 +12,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		180017212F05DBFF004C8F1F /* CineSense.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = CineSense.app; path = "/Users/neel/Developer/CineSense/CineSense/build/Debug-iphoneos/CineSense.app"; sourceTree = "<absolute>"; };
 		18D961F22F08BDD6009E49F1 /* CLAUDE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLAUDE.md; sourceTree = "<group>"; };
+		18D962742F09D508009E49F1 /* CineSense.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CineSense.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -60,6 +60,7 @@
 				18D961C82F08B9C9009E49F1 /* docs */,
 				180017232F05DBFF004C8F1F /* CineSense */,
 				18D961F22F08BDD6009E49F1 /* CLAUDE.md */,
+				18D962742F09D508009E49F1 /* CineSense.app */,
 			);
 			sourceTree = "<group>";
 		};
@@ -87,7 +88,7 @@
 				909362176D312EDC97E4943B /* Supabase */,
 			);
 			productName = CineSense;
-			productReference = 180017212F05DBFF004C8F1F /* CineSense.app */;
+			productReference = 18D962742F09D508009E49F1 /* CineSense.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */

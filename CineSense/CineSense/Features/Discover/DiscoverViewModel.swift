@@ -60,12 +60,13 @@ final class DiscoverViewModel: ObservableObject {
     private let discoverService: DiscoverService
     let recentSearchRepo: RecentSearchRepository
     private let resolutionCache = ResolutionCache.shared
+    private let aiCandidatesCache = AICandidatesCache.shared
 
     private var searchTask: Task<Void, Never>?
 
-    // Cache for AI results
-    private var cachedAIResponse: AiIdentifyResponse?
-    private var cachedAICandidates: [ResolvedCandidate]?
+    // Track current AI search context for cache key
+    private var lastImagePath: String?
+    private var lastTextHint: String?
 
     init(
         searchService: SearchService = SearchService(),
@@ -140,6 +141,19 @@ final class DiscoverViewModel: ObservableObject {
                 contentType: contentType
             )
 
+            // Store context for cache key
+            lastImagePath = uploadResult.path
+            lastTextHint = textHint
+            print("🔍 PerformAI: Stored path=\(uploadResult.path), hint=\(textHint ?? "nil")")
+
+            // Check cache first (in case same image was uploaded again)
+            if let cached = aiCandidatesCache.get(imagePath: uploadResult.path, textHint: textHint) {
+                print("✅ PerformAI: Found cached results, skipping AI call")
+                state = .aiSuggestions(cached.response, cached.candidates)
+                return
+            }
+            print("🔍 PerformAI: No cache, proceeding with AI identify")
+
             // Identify
             let response = try await aiService.identifyImage(
                 imagePath: uploadResult.path,
@@ -159,9 +173,15 @@ final class DiscoverViewModel: ObservableObject {
             await resolveAllCandidates(&candidates)
             state = .aiSuggestions(response, candidates)
 
-            // Cache the results
-            cachedAIResponse = response
-            cachedAICandidates = candidates
+            // Cache the fully resolved results
+            print("💾 PerformAI: Caching results for path=\(uploadResult.path), hint=\(textHint ?? "nil")")
+            aiCandidatesCache.set(
+                imagePath: uploadResult.path,
+                textHint: textHint,
+                response: response,
+                candidates: candidates
+            )
+            print("✅ PerformAI: Results cached successfully")
 
         } catch {
             state = .failed(error)
@@ -169,21 +189,47 @@ final class DiscoverViewModel: ObservableObject {
     }
 
     func restoreCachedAIResults() {
-        guard let response = cachedAIResponse,
-              let candidates = cachedAICandidates
-        else {
+        guard let imagePath = lastImagePath else {
+            print("⚠️ RestoreCache: No lastImagePath found")
             return
         }
-        state = .aiSuggestions(response, candidates)
+
+        if let cached = aiCandidatesCache.get(imagePath: imagePath, textHint: lastTextHint) {
+            print("✅ RestoreCache: Found cached results for path: \(imagePath)")
+            // Force state update even if already showing AI suggestions
+            // This ensures the view refreshes
+            state = .aiSuggestions(cached.response, cached.candidates)
+        } else {
+            print("⚠️ RestoreCache: No cache entry found for path: \(imagePath), hint: \(lastTextHint ?? "nil")")
+        }
     }
 
     func clearAICache() {
-        cachedAIResponse = nil
-        cachedAICandidates = nil
+        guard let imagePath = lastImagePath else { return }
+
+        // Clear from cache
+        aiCandidatesCache.clear(imagePath: imagePath, textHint: lastTextHint)
+
+        // Reset context
+        lastImagePath = nil
+        lastTextHint = nil
     }
 
     var hasCachedAIResults: Bool {
-        cachedAIResponse != nil && cachedAICandidates != nil
+        guard let imagePath = lastImagePath else {
+            print("🔍 HasCache: No lastImagePath, returning false")
+            return false
+        }
+        let hasCache = aiCandidatesCache.get(imagePath: imagePath, textHint: lastTextHint) != nil
+        print("🔍 HasCache: Path=\(imagePath), Hint=\(lastTextHint ?? "nil"), Result=\(hasCache)")
+        return hasCache
+    }
+
+    var isShowingCachedResults: Bool {
+        if case .aiSuggestions = state {
+            return hasCachedAIResults
+        }
+        return false
     }
 
     private func resolveAllCandidates(_ candidates: inout [ResolvedCandidate]) async {

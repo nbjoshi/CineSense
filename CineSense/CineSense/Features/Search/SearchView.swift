@@ -113,13 +113,15 @@ private struct SearchViewContent: View {
             text: $viewModel.query,
             isPresented: $isSearchPresented,
             placement: .navigationBarDrawer(displayMode: .always),
-            prompt: "Movies & TV Shows"
+            prompt: "What do you want to watch?"
         )
         .navigationDestination(for: MediaSummary.self) { media in
             MediaDetailView(mediaId: media.id, mediaType: media.mediaType)
         }
         .sheet(isPresented: $showAiSearch) {
-            AiSearchSheet(viewModel: aiViewModel)
+            AiSearchSheet(viewModel: aiViewModel, onCandidateSelected: { candidate in
+                viewModel.searchNow(candidate.title)
+            })
         }
         .onAppear {
             viewModel.recentSearchRepository = recentSearchRepo
@@ -234,6 +236,7 @@ private struct RecentSearchesList: View {
 
 private struct AiSearchSheet: View {
     @ObservedObject var viewModel: AiViewModel
+    let onCandidateSelected: (Candidate) -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -255,7 +258,20 @@ private struct AiSearchSheet: View {
 
                 case let .loaded(response):
                     NavigationStack {
-                        AiResultsView(response: response, onClose: { dismiss() })
+                        AiResultsView(
+                            response: response,
+                            onClose: { dismiss() },
+                            onCandidateSelected: onCandidateSelected
+                        )
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button {
+                                    viewModel.startNewSearch()
+                                } label: {
+                                    Label("New Search", systemImage: "plus.circle")
+                                }
+                            }
+                        }
                     }
 
                 case let .failed(error):
@@ -280,8 +296,11 @@ private struct AiSearchSheet: View {
         }
         .presentationDetents(viewModel.selectedImage == nil ? [.medium] : [.large])
         .presentationDragIndicator(.visible)
+        .onAppear {
+            viewModel.restoreCachedResultsIfAvailable()
+        }
         .onDisappear {
-            viewModel.reset()
+            viewModel.resetTransientUI()
         }
     }
 }
@@ -363,7 +382,7 @@ private struct AiSearchIdleView: View {
         .padding()
         .fullScreenCover(isPresented: $showCamera) {
             CameraCaptureSheet(isPresented: $showCamera) { image in
-                viewModel.state = .imageSelected(image)
+                viewModel.selectCameraImage(image)
             }
         }
     }
@@ -427,7 +446,7 @@ private struct AiImagePreviewView: View {
             VStack(spacing: 16) {
                 // Hint card
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Hint (optional)")
+                    Text("Hint (optional but highly recommended)")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
 
@@ -510,6 +529,7 @@ private struct AiImagePreviewView: View {
 private struct AiResultsView: View {
     let response: AiIdentifyResponse
     let onClose: () -> Void
+    let onCandidateSelected: (Candidate) -> Void
 
     var body: some View {
         ScrollView {
@@ -555,18 +575,13 @@ private struct AiResultsView: View {
                         .fontWeight(.bold)
 
                     ForEach(response.candidates) { candidate in
-                        NavigationLink(value: MediaSummary(
-                            id: 0,
-                            mediaType: candidate.type,
-                            title: candidate.title,
-                            releaseDate: candidate.year,
-                            posterPath: nil
-                        )) {
+                        Button {
+                            onCandidateSelected(candidate)
+                            onClose()
+                        } label: {
                             AiCandidateRow(candidate: candidate)
                         }
-                        .simultaneousGesture(TapGesture().onEnded {
-                            onClose()
-                        })
+                        .buttonStyle(.plain)
                     }
                 }
 

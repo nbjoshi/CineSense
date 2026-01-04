@@ -36,10 +36,14 @@ struct DiscoverView: View {
                         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
                         impactFeedback.impactOccurred()
 
-                        // Check if we have cached results
+                        // ✅ Check cache before showing picker
+                        // If we have cached AI results from a previous search, restore them
+                        // Otherwise, show the photo picker for a new AI search
                         if viewModel.hasCachedAIResults {
+                            print("🔍 AI Button: Cache exists, restoring cached results")
                             viewModel.restoreCachedAIResults()
                         } else {
+                            print("🔍 AI Button: No cache, showing picker")
                             showAIPicker = true
                         }
                     }
@@ -146,6 +150,7 @@ struct DiscoverView: View {
                 AISuggestionsView(
                     response: response,
                     candidates: candidates,
+                    isCached: viewModel.isShowingCachedResults,
                     onCandidateTap: { candidate in
                         handleCandidateTap(candidate)
                     },
@@ -588,6 +593,7 @@ private struct AIIdentifyingView: View {
 private struct AISuggestionsView: View {
     let response: AiIdentifyResponse
     let candidates: [ResolvedCandidate]
+    let isCached: Bool
     let onCandidateTap: (ResolvedCandidate) -> Void
     let onNewSearch: () -> Void
 
@@ -595,8 +601,12 @@ private struct AISuggestionsView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 20) {
                 // Header with Summary
-                AIAnalysisHeader(summary: response.querySummary, candidatesCount: candidates.count)
-                    .padding(.horizontal, 20)
+                AIAnalysisHeader(
+                    summary: response.querySummary,
+                    candidatesCount: candidates.count,
+                    isCached: isCached
+                )
+                .padding(.horizontal, 20)
 
                 // New Search Button
                 Button {
@@ -651,6 +661,7 @@ private struct AISuggestionsView: View {
 private struct AIAnalysisHeader: View {
     let summary: String
     let candidatesCount: Int
+    let isCached: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -667,6 +678,21 @@ private struct AIAnalysisHeader: View {
                     )
 
                 Spacer()
+
+                if isCached {
+                    HStack(spacing: 4) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.caption2)
+                        Text("Cached")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                    }
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color(.systemGray5))
+                    .clipShape(Capsule())
+                }
 
                 Text("\(candidatesCount)")
                     .font(.caption)
@@ -956,14 +982,16 @@ private struct AIPhotoPickerSheet: View {
     @ViewBuilder
     private func previewSection(image: UIImage) -> some View {
         VStack(spacing: 24) {
-            // Image Preview
-            Image(uiImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(maxHeight: 400)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: .black.opacity(0.1), radius: 12, y: 6)
-                .padding(.horizontal, 20)
+            // Image Preview - Spotify-style cover look
+            GeometryReader { geometry in
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill() // ✅ Fill the container like Spotify
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: .black.opacity(0.1), radius: 12, y: 6)
+            }
+            .frame(height: 400)
 
             // Hint Input
             VStack(alignment: .leading, spacing: 8) {

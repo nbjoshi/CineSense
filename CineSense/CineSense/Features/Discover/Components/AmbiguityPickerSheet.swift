@@ -40,10 +40,15 @@ struct AmbiguityPickerSheet: View {
                                 let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
                                 impactFeedback.impactOccurred()
 
-                                // Slight delay for visual feedback
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                    onSelect(match)
-                                    dismiss()
+                                // ✅ Dismiss sheet FIRST to avoid navigation conflicts
+                                dismiss()
+
+                                // Then trigger selection after dismissal animation completes
+                                Task {
+                                    try? await Task.sleep(nanoseconds: 300_000_000) // 300ms for sheet dismissal
+                                    await MainActor.run {
+                                        onSelect(match)
+                                    }
                                 }
                             }
                             .transition(.asymmetric(

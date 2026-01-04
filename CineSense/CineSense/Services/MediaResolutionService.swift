@@ -32,7 +32,7 @@ final class MediaResolutionService {
             }
 
             // Score and rank
-            let scoredMatches = scoreMatches(matches, targetTitle: title, targetYear: year)
+            let scoredMatches = scoreMatches(matches, targetTitle: title, targetYear: year, mediaType: type)
 
             guard let topMatch = scoredMatches.first else {
                 return .failed(ResolutionError.noMatchFound)
@@ -72,7 +72,7 @@ final class MediaResolutionService {
         title: String,
         type: MediaType,
         year: String
-    ) async throws -> [TMDBSearchResult] {
+    ) async throws -> [SpecificSearchResult] {
         let path = type == .movie ? "search/movie" : "search/tv"
         let yearKey = type == .movie ? "primary_release_year" : "first_air_date_year"
 
@@ -88,21 +88,44 @@ final class MediaResolutionService {
         )
 
         struct Response: Decodable {
-            let results: [TMDBSearchResult]
+            let results: [SpecificSearchResult]
         }
 
         let response: Response = try await httpClient.send(request)
+        return response.results
+    }
 
-        // Filter to exact media type (TMDB sometimes returns mixed)
-        return response.results.filter { $0.mediaType == type.rawValue }
+    // MARK: - Search Result Types
+
+    private struct SpecificSearchResult: Decodable {
+        let id: Int
+        let title: String?
+        let name: String?
+        let releaseDate: String?
+        let firstAirDate: String?
+        let posterPath: String?
+        let voteCount: Int?
+        let popularity: Double?
+
+        enum CodingKeys: String, CodingKey {
+            case id
+            case title
+            case name
+            case releaseDate = "release_date"
+            case firstAirDate = "first_air_date"
+            case posterPath = "poster_path"
+            case voteCount = "vote_count"
+            case popularity
+        }
     }
 
     // MARK: - Scoring Algorithm
 
     private func scoreMatches(
-        _ matches: [TMDBSearchResult],
+        _ matches: [SpecificSearchResult],
         targetTitle: String,
-        targetYear: String
+        targetYear: String,
+        mediaType: MediaType
     ) -> [TMDBMatch] {
         // Find max vote count for normalization
         let maxVotes = matches.compactMap { $0.voteCount }.max() ?? 1
@@ -128,7 +151,7 @@ final class MediaResolutionService {
 
                 return TMDBMatch(
                     id: result.id,
-                    mediaType: MediaType(rawValue: result.mediaType) ?? .movie,
+                    mediaType: mediaType,
                     title: result.title ?? result.name ?? "",
                     year: extractYear(from: result.releaseDate ?? result.firstAirDate),
                     posterPath: result.posterPath,

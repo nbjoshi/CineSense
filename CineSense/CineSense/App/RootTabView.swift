@@ -73,20 +73,29 @@ private struct ProfileTab: View {
     var body: some View {
         // Per docs: no default navigation titles
         NavigationStack {
+            VStack (alignment: .leading) {
+                HStack (alignment: .center, spacing: 16){
+                    Image(systemName: "person.crop.circle.fill")
+                        .resizable()
+                        .frame(width: 100, height: 100)
+                        .foregroundColor(.gray)
+                    
+                    Text("User Profile")
+                        .font(.title)
+                        .fontWeight(.semibold)
+                        .multilineTextAlignment(.trailing)
+                }
+            }
+            .padding(.vertical)
+            
             List {
-                Section("Debug Panel") {
+                Section("Profile") {
                     LabeledContent("Status") {
                         Text(sessionStore.session != nil ? "Logged In" : "Not Logged In")
                             .foregroundColor(sessionStore.session != nil ? .green : .red)
                     }
 
                     if let session = sessionStore.session {
-                        LabeledContent("User ID") {
-                            Text(session.user.id.uuidString)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-
                         if let email = session.user.email {
                             LabeledContent("Email") {
                                 Text(email)

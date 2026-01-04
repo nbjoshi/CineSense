@@ -33,6 +33,7 @@ final class AiViewModel: ObservableObject {
     // Cache for persistence across sheet presentations
     private var cachedResponse: AiIdentifyResponse?
     private var cachedImage: UIImage?
+    private var cachedImagePath: String?
 
     init(aiService: AIService = AIService()) {
         self.aiService = aiService
@@ -104,6 +105,7 @@ final class AiViewModel: ObservableObject {
             // Cache the results
             cachedResponse = result
             cachedImage = selectedImage
+            cachedImagePath = uploadResult.path
 
             state = .loaded(result)
         } catch {
@@ -117,6 +119,10 @@ final class AiViewModel: ObservableObject {
         state = .idle
     }
 
+    var imagePath: String? {
+        cachedImagePath
+    }
+
     func reset() {
         identifyTask?.cancel()
         state = .idle
@@ -125,6 +131,7 @@ final class AiViewModel: ObservableObject {
         textHint = ""
         cachedResponse = nil
         cachedImage = nil
+        cachedImagePath = nil
     }
 
     func resetTransientUI() {
@@ -132,7 +139,7 @@ final class AiViewModel: ObservableObject {
         selectedPhoto = nil
         selectedImage = nil
         textHint = ""
-        // Keep cachedResponse and cachedImage for restoration
+        // Keep cachedResponse, cachedImage, and cachedImagePath for restoration
     }
 
     func restoreCachedResultsIfAvailable() {
@@ -144,6 +151,7 @@ final class AiViewModel: ObservableObject {
     func startNewSearch() {
         cachedResponse = nil
         cachedImage = nil
+        cachedImagePath = nil
         selectedPhoto = nil
         selectedImage = nil
         textHint = ""
@@ -156,7 +164,7 @@ final class AiViewModel: ObservableObject {
         selectedImage = nil
         textHint = ""
         state = .idle
-        // Keep cachedResponse and cachedImage intact
+        // Keep cachedResponse, cachedImage, and cachedImagePath intact
     }
 
     func retry() {

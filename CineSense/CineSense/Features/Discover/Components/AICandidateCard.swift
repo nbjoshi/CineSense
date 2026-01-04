@@ -20,10 +20,16 @@ struct AICandidateCard: View {
             }
         }) {
             HStack(alignment: .top, spacing: 12) {
-                // Static skeleton poster
-                StaticSkeletonPoster()
-                    .frame(width: 80, height: 120)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                // Poster (show actual image when available, otherwise skeleton)
+                Group {
+                    if let posterURL = candidate.posterURL {
+                        AsyncPosterImage(url: posterURL)
+                    } else {
+                        StaticSkeletonPoster()
+                    }
+                }
+                .frame(width: 80, height: 120)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 // Content
                 VStack(alignment: .leading, spacing: 8) {

@@ -30,6 +30,8 @@ private struct SearchViewContent: View {
 
     @State private var showAiSearch = false
     @State private var isSearchPresented = false
+    @State private var navigationPath = NavigationPath()
+    @State private var pendingMediaNavigation: (Int, MediaType)?
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -119,9 +121,31 @@ private struct SearchViewContent: View {
             MediaDetailView(mediaId: media.id, mediaType: media.mediaType)
         }
         .sheet(isPresented: $showAiSearch) {
-            AiSearchSheet(viewModel: aiViewModel, onCandidateSelected: { candidate in
-                viewModel.searchNow(candidate.title)
-            })
+            AiSearchSheet(
+                viewModel: aiViewModel,
+                onCandidateSelected: { searchQuery in
+                    viewModel.searchNow(searchQuery)
+                },
+                onMediaSelected: { tmdbId, mediaType in
+                    // Store for navigation after sheet dismisses
+                    pendingMediaNavigation = (tmdbId, mediaType)
+                }
+            )
+        }
+        .onChange(of: showAiSearch) { _, isShowing in
+            if !isShowing, let (tmdbId, mediaType) = pendingMediaNavigation {
+                pendingMediaNavigation = nil
+                // Navigate after sheet is fully dismissed
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    navigationPath.append(MediaSummary(
+                        id: tmdbId,
+                        mediaType: mediaType,
+                        title: "",
+                        releaseDate: nil,
+                        posterPath: nil
+                    ))
+                }
+            }
         }
         .onAppear {
             viewModel.recentSearchRepository = recentSearchRepo
@@ -236,7 +260,8 @@ private struct RecentSearchesList: View {
 
 private struct AiSearchSheet: View {
     @ObservedObject var viewModel: AiViewModel
-    let onCandidateSelected: (Candidate) -> Void
+    let onCandidateSelected: (String) -> Void
+    let onMediaSelected: (Int, MediaType) -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -257,20 +282,17 @@ private struct AiSearchSheet: View {
                     ProgressView("Identifying with AI...")
 
                 case let .loaded(response):
-                    NavigationStack {
-                        AiResultsView(
-                            response: response,
-                            onClose: { dismiss() },
-                            onCandidateSelected: onCandidateSelected
-                        )
-                        .toolbar {
-                            ToolbarItem(placement: .topBarTrailing) {
-                                Button {
-                                    viewModel.beginNewAttemptKeepingCache()
-                                } label: {
-                                    Label("New Attempt", systemImage: "arrow.counterclockwise")
-                                }
-                            }
+                    if let imagePath = viewModel.imagePath {
+                        NavigationStack {
+                            AiResultsView(
+                                response: response,
+                                imagePath: imagePath,
+                                textHint: viewModel.textHint.isEmpty ? nil : viewModel.textHint,
+                                aiViewModel: viewModel,
+                                onClose: { dismiss() },
+                                onSearchFallback: onCandidateSelected,
+                                onMediaSelected: onMediaSelected
+                            )
                         }
                     }
 
@@ -561,13 +583,47 @@ private struct AiImagePreviewView: View {
 // MARK: - AI Results View
 
 private struct AiResultsView: View {
-    let response: AiIdentifyResponse
+    @ObservedObject var viewModel: AiResultsViewModel
+    @ObservedObject var aiViewModel: AiViewModel
     let onClose: () -> Void
-    let onCandidateSelected: (Candidate) -> Void
+    let onSearchFallback: (String) -> Void
+    let onMediaSelected: (Int, MediaType) -> Void
+
+    @State private var ambiguousCandidate: ResolvedCandidate?
+
+    init(
+        response: AiIdentifyResponse,
+        imagePath: String,
+        textHint: String?,
+        aiViewModel: AiViewModel,
+        onClose: @escaping () -> Void,
+        onSearchFallback: @escaping (String) -> Void,
+        onMediaSelected: @escaping (Int, MediaType) -> Void
+    ) {
+        self.viewModel = AiResultsViewModel(
+            response: response,
+            imagePath: imagePath,
+            textHint: textHint
+        )
+        self.aiViewModel = aiViewModel
+        self.onClose = onClose
+        self.onSearchFallback = onSearchFallback
+        self.onMediaSelected = onMediaSelected
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
+                Button {
+                    aiViewModel.beginNewAttemptKeepingCache()
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.headline)
+                        .padding(10)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .alignment(.trailing)
                 // Summary card with gradient accent
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -584,9 +640,17 @@ private struct AiResultsView: View {
                         Text("AI Analysis")
                             .font(.headline)
                             .fontWeight(.semibold)
+
+                        Spacer()
+
+                        if viewModel.isResolving {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
                     }
 
-                    Text(response.querySummary)
+                    Text(viewModel.candidates.first?.original.rationale.isEmpty == false ?
+                         "Analyzing and matching with TMDB..." : "Finding best matches...")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .lineSpacing(4)
@@ -608,44 +672,52 @@ private struct AiResultsView: View {
                         .font(.title3)
                         .fontWeight(.bold)
 
-                    ForEach(response.candidates) { candidate in
-                        Button {
-                            onCandidateSelected(candidate)
-                            onClose()
-                        } label: {
-                            AiCandidateRow(candidate: candidate)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                // Metadata footer
-                if let provider = response.provider, let model = response.model {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "sparkles")
-                                .font(.caption2)
-                            Text("Powered by \(provider)")
-                                .font(.caption)
-                        }
-                        .foregroundColor(.secondary)
-
-                        if let latency = response.latencyMs {
-                            HStack(spacing: 4) {
-                                Image(systemName: "clock")
-                                    .font(.caption2)
-                                Text("Processed in \(latency)ms")
-                                    .font(.caption)
-                            }
-                            .foregroundColor(.secondary)
+                    ForEach(viewModel.candidates) { candidate in
+                        AICandidateCard(candidate: candidate) {
+                            handleCandidateTap(candidate)
                         }
                     }
-                    .padding(.top, 4)
                 }
             }
             .padding(20)
         }
         .scrollIndicators(.hidden)
+        .sheet(item: $ambiguousCandidate) { candidate in
+            if let matches = candidate.ambiguousMatches {
+                AmbiguityPickerSheet(
+                    matches: matches,
+                    onSelect: { match in
+                        viewModel.resolveAmbiguity(for: candidate.id, selectedMatch: match)
+                        ambiguousCandidate = nil
+                        // Navigate to resolved media
+                        onMediaSelected(match.id, match.mediaType)
+                        onClose()
+                    },
+                    onCancel: {
+                        ambiguousCandidate = nil
+                    }
+                )
+            }
+        }
+    }
+
+    private func handleCandidateTap(_ candidate: ResolvedCandidate) {
+        switch candidate.state {
+        case let .resolved(media):
+            onMediaSelected(media.tmdbId, media.mediaType)
+            onClose()
+
+        case .ambiguous:
+            ambiguousCandidate = candidate
+
+        case .failed:
+            // Fallback to text search
+            onSearchFallback(candidate.original.title)
+            onClose()
+
+        default:
+            break
+        }
     }
 }
 

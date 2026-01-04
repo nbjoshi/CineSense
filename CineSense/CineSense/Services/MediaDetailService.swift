@@ -18,16 +18,14 @@ final class MediaDetailService {
     )
 
     func getMediaDetail(id: Int, mediaType: MediaType) async throws -> MediaDetail {
-        var path: String
-        switch mediaType {
-        case .movie:
-            path = "movie/\(id)"
-        case .tv:
-            path = "tv/\(id)"
-        }
-
+        let path = (mediaType == .movie) ? "movie/\(id)" : "tv/\(id)"
         let req = APIRequest(path: path)
-        print(path)
+
+        return try await httpClient.send(req)
+    }
+    
+    func getSeasonDetail(id: Int, season: Int) async throws -> SeasonDetails {
+        let req = APIRequest(path: "/tv/\(id)/season/\(season)")
         return try await httpClient.send(req)
     }
 }

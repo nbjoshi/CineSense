@@ -21,7 +21,7 @@ struct MediaDetailView: View {
                 ProgressView("Loading...")
 
             case let .loaded(detail):
-                DetailContent(detail: detail)
+                DetailContent(detail: detail, viewModel: viewModel, mediaId: mediaId)
 
             case let .failed(error):
                 ContentUnavailableView(
@@ -44,8 +44,12 @@ private let headerCornerRadius: CGFloat = 18
 
 private struct DetailContent: View {
     let detail: MediaDetail
+    @ObservedObject var viewModel: MediaDetailViewModel
+    let mediaId: Int
     @Environment(\.dismiss) private var dismiss
     private let headerHeight: CGFloat = 380
+
+    @State private var selectedSeasonNumber: Int = 1
     
     var body: some View {
         GeometryReader { proxy in
@@ -144,6 +148,101 @@ private struct DetailContent: View {
                             Text(detail.overview.isEmpty ? "No overview available." : detail.overview)
                                 .font(.body)
                                 .foregroundColor(.secondary)
+                        }
+                        
+                        Divider()
+                        
+                        // Season & Episodes Section (TV only)
+                        if detail.mediaType == .tv, let seasons = detail.seasons, !seasons.isEmpty {
+                            VStack(alignment: .leading, spacing: 16) {
+                                HStack {
+                                    Text("Episodes")
+                                        .font(.headline)
+
+                                    Spacer()
+
+                                    // Season Picker
+                                    Menu {
+                                        ForEach(seasons, id: \.seasonNumber) { season in
+                                            Button("Season \(season.seasonNumber)") {
+                                                selectedSeasonNumber = season.seasonNumber
+                                                Task {
+                                                    await viewModel.loadSeasonDetails(id: mediaId, season: season.seasonNumber)
+                                                }
+                                            }
+                                        }
+                                    } label: {
+                                        HStack(spacing: 4) {
+                                            Text("Season \(selectedSeasonNumber)")
+                                                .font(.subheadline)
+                                                .foregroundColor(.primary)
+                                            Image(systemName: "chevron.down")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.secondary.opacity(0.1))
+                                        .cornerRadius(8)
+                                    }
+                                }
+
+                                // Episodes List
+                                if let seasonDetails = viewModel.seasonDetails {
+                                    LazyVStack(alignment: .leading, spacing: 40) {
+                                        ForEach(seasonDetails.episodes) { episode in
+                                            VStack(alignment: .leading, spacing: 20) {
+                                                HStack(alignment: .center, spacing: 12) {
+                                                    if let stillPath = episode.stillPath {
+                                                        AsyncImage(url: URL(string: "https://image.tmdb.org/t/p/w500\(stillPath)")) { image in
+                                                            image
+                                                                .resizable()
+                                                                .aspectRatio(contentMode: .fill)
+                                                                .frame(width: 120, height: 80)
+                                                                .cornerRadius(8)
+                                                        } placeholder: {
+                                                            Color.gray
+                                                                .frame(width: 120, height: 80)
+                                                                .cornerRadius(8)
+                                                        }
+                                                    } else {
+                                                        Color.gray
+                                                            .frame(width: 120, height: 80)
+                                                            .cornerRadius(8)
+                                                    }
+
+                                                    Text("S\(episode.seasonNumber) E\(episode.episodeNumber) - \(episode.name)")
+                                                        .font(.headline)
+                                                        .multilineTextAlignment(.leading)
+                                                }
+
+                                                VStack(alignment: .leading, spacing: 12) {
+                                                    Text(episode.overview)
+                                                        .font(.subheadline)
+                                                    Text("\(episode.runtime) min · Air Date: \(episode.airDate)")
+                                                        .font(.footnote)
+                                                        .foregroundColor(.secondary)
+                                                }
+                                            }
+
+                                            if episode.id != seasonDetails.episodes.last?.id {
+                                                Divider()
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    ProgressView("Loading episodes...")
+                                        .padding(.vertical, 20)
+                                }
+                            }
+                            .padding(.vertical)
+                            .task {
+                                // Load first season episodes on appear
+                                if viewModel.seasonDetails == nil, let firstSeason = seasons.first {
+                                    selectedSeasonNumber = firstSeason.seasonNumber
+                                    await viewModel.loadSeasonDetails(id: mediaId, season: firstSeason.seasonNumber)
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal)

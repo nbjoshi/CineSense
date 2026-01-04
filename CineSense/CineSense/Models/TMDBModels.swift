@@ -89,7 +89,10 @@ struct TMDBMovieDetail: Decodable {
             backdropPath: backdropPath,
             genres: genres.map(\.name),
             runtime: runtime,
-            voteAverage: voteAverage
+            voteAverage: voteAverage,
+            numberOfSeasons: nil,
+            numberOfEpisodes: nil,
+            seasons: nil
         )
     }
 }
@@ -128,7 +131,10 @@ struct TMDBTVDetail: Decodable {
             backdropPath: backdropPath,
             genres: genres.map(\.name),
             runtime: nil,
-            voteAverage: voteAverage
+            voteAverage: voteAverage,
+            numberOfSeasons: nil,
+            numberOfEpisodes: nil,
+            seasons: nil
         )
     }
 }

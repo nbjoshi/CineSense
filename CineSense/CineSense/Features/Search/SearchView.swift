@@ -15,9 +15,7 @@ struct SearchView: View {
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
-        NavigationStack {
-            SearchViewContent(modelContext: modelContext)
-        }
+        SearchViewContent(modelContext: modelContext)
     }
 }
 
@@ -30,6 +28,8 @@ private struct SearchViewContent: View {
 
     @State private var showAiSearch = false
     @State private var isSearchPresented = false
+    @State private var navigationPath = NavigationPath()
+    @State private var pendingMediaNavigation: (Int, MediaType)?
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -37,43 +37,44 @@ private struct SearchViewContent: View {
     }
 
     var body: some View {
-        Group {
-            switch viewModel.state {
-            case .idle:
-                if isSearchPresented || !viewModel.query.isEmpty {
-                    RecentSearchesList(viewModel: viewModel, repository: recentSearchRepo)
-                } else {
-                    IdlePlaceholder()
-                }
-
-            case .loading:
-                ProgressView("Searching...")
-                    .padding(.top, 16)
-
-            case let .loaded(results):
-                List(results) { media in
-                    NavigationLink(value: media) {
-                        MediaSearchRow(media: media)
+        NavigationStack(path: $navigationPath) {
+            Group {
+                switch viewModel.state {
+                case .idle:
+                    if isSearchPresented || !viewModel.query.isEmpty {
+                        RecentSearchesList(viewModel: viewModel, repository: recentSearchRepo)
+                    } else {
+                        IdlePlaceholder()
                     }
+
+                case .loading:
+                    ProgressView("Searching...")
+                        .padding(.top, 16)
+
+                case let .loaded(results):
+                    List(results) { media in
+                        NavigationLink(value: media) {
+                            MediaSearchRow(media: media)
+                        }
+                    }
+                    .listStyle(.plain)
+
+                case .empty:
+                    ContentUnavailableView(
+                        "No Results",
+                        systemImage: "magnifyingglass.circle",
+                        description: Text("Try a different search term")
+                    )
+
+                case let .failed(error):
+                    ContentUnavailableView(
+                        "Search Failed",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text(error.localizedDescription)
+                    )
                 }
-                .listStyle(.plain)
-
-            case .empty:
-                ContentUnavailableView(
-                    "No Results",
-                    systemImage: "magnifyingglass.circle",
-                    description: Text("Try a different search term")
-                )
-
-            case let .failed(error):
-                ContentUnavailableView(
-                    "Search Failed",
-                    systemImage: "exclamationmark.triangle",
-                    description: Text(error.localizedDescription)
-                )
             }
-        }
-        .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .top, spacing: 0) {
             Color.clear.frame(height: 8)
         }
@@ -113,16 +114,41 @@ private struct SearchViewContent: View {
             text: $viewModel.query,
             isPresented: $isSearchPresented,
             placement: .navigationBarDrawer(displayMode: .always),
-            prompt: "Movies & TV Shows"
+            prompt: "What do you want to watch?"
         )
         .navigationDestination(for: MediaSummary.self) { media in
             MediaDetailView(mediaId: media.id, mediaType: media.mediaType)
         }
         .sheet(isPresented: $showAiSearch) {
-            AiSearchSheet(viewModel: aiViewModel)
+            AiSearchSheet(
+                viewModel: aiViewModel,
+                onCandidateSelected: { searchQuery in
+                    viewModel.searchNow(searchQuery)
+                },
+                onMediaSelected: { tmdbId, mediaType in
+                    // Store for navigation after sheet dismisses
+                    pendingMediaNavigation = (tmdbId, mediaType)
+                }
+            )
+        }
+        .onChange(of: showAiSearch) { _, isShowing in
+            if !isShowing, let (tmdbId, mediaType) = pendingMediaNavigation {
+                pendingMediaNavigation = nil
+                // Navigate after sheet is fully dismissed
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    navigationPath.append(MediaSummary(
+                        id: tmdbId,
+                        mediaType: mediaType,
+                        title: "",
+                        releaseDate: nil,
+                        posterPath: nil
+                    ))
+                }
+            }
         }
         .onAppear {
             viewModel.recentSearchRepository = recentSearchRepo
+        }
         }
     }
 }
@@ -234,6 +260,8 @@ private struct RecentSearchesList: View {
 
 private struct AiSearchSheet: View {
     @ObservedObject var viewModel: AiViewModel
+    let onCandidateSelected: (String) -> Void
+    let onMediaSelected: (Int, MediaType) -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -254,8 +282,18 @@ private struct AiSearchSheet: View {
                     ProgressView("Identifying with AI...")
 
                 case let .loaded(response):
-                    NavigationStack {
-                        AiResultsView(response: response, onClose: { dismiss() })
+                    if let imagePath = viewModel.imagePath {
+                        NavigationStack {
+                            AiResultsView(
+                                response: response,
+                                imagePath: imagePath,
+                                textHint: viewModel.textHint.isEmpty ? nil : viewModel.textHint,
+                                aiViewModel: viewModel,
+                                onClose: { dismiss() },
+                                onSearchFallback: onCandidateSelected,
+                                onMediaSelected: onMediaSelected
+                            )
+                        }
                     }
 
                 case let .failed(error):
@@ -278,10 +316,13 @@ private struct AiSearchSheet: View {
             }
             .padding(.top)
         }
-        .presentationDetents(viewModel.selectedImage == nil ? [.medium] : [.large])
+        .presentationDetents([.fraction(0.92)])
         .presentationDragIndicator(.visible)
+        .onAppear {
+            viewModel.restoreCachedResultsIfAvailable()
+        }
         .onDisappear {
-            viewModel.reset()
+            viewModel.resetTransientUI()
         }
     }
 }
@@ -363,7 +404,7 @@ private struct AiSearchIdleView: View {
         .padding()
         .fullScreenCover(isPresented: $showCamera) {
             CameraCaptureSheet(isPresented: $showCamera) { image in
-                viewModel.state = .imageSelected(image)
+                viewModel.selectCameraImage(image)
             }
         }
     }
@@ -424,97 +465,156 @@ private struct AiImagePreviewView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                // Hint card
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Hint (optional)")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    TextField("e.g., “sci-fi series with robots”", text: $viewModel.textHint, axis: .vertical)
-                        .font(.body)
-                        .lineLimit(2...4)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
-                        .background(Color.secondary.opacity(0.10))
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
-                        )
-                        .focused($hintFocused)
-                }
-                .padding(14)
-                .background(Color.secondary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-
-                // Primary action (full width, consistent height)
-                Button {
-                    hintFocused = false
-                    Task { await viewModel.identifySelectedImage() }
-                } label: {
-                    Label("Identify with AI", systemImage: "sparkles")
-                        .font(.headline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                }
-                .buttonStyle(.borderedProminent)
-
-                // Secondary action (same height)
-                Button {
-                    viewModel.clearImage()
-                } label: {
-                    Label("Choose a different image", systemImage: "photo.on.rectangle")
-                        .font(.headline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                }
-                .buttonStyle(.bordered)
-                
-                // Big image card
-                ZStack(alignment: .bottomTrailing) {
+            VStack(spacing: 20) {
+                // Image preview card at top
+                ZStack(alignment: .topTrailing) {
                     Image(uiImage: image)
                         .resizable()
-                        .scaledToFit()
+                        .scaledToFill()
                         .frame(maxWidth: .infinity)
-                        .frame(maxHeight: 420)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .frame(height: 280)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
                         )
-                        .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
-
+                        .shadow(color: .black.opacity(0.1), radius: 16, y: 8)
+                    
+                    // Change button overlay
                     Button {
                         viewModel.clearImage()
                     } label: {
-                        Label("Change", systemImage: "arrow.triangle.2.circlepath")
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Capsule())
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.caption.weight(.semibold))
+                            Text("Change")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
                     .padding(12)
                 }
+                
+                // Text hint card
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.caption)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.orange, .yellow],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        Text("Add a Hint")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .foregroundStyle(.primary)
+                    
+                    Text("Optional but highly recommended for better accuracy")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    TextField("e.g., \"sci-fi series with robots\"", text: $viewModel.textHint, axis: .vertical)
+                        .font(.body)
+                        .lineLimit(2...4)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(Color.secondary.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+                        )
+                        .focused($hintFocused)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.secondary.opacity(0.05))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+                )
+                
+                Spacer()
+                
+                Button {
+                    hintFocused = false
+                    Task { await viewModel.identifySelectedImage() }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "sparkles")
+                            .font(.headline)
+                        Text("Identify with AI")
+                            .font(.headline.weight(.semibold))
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(
+                        LinearGradient(
+                            colors: [.purple, .blue],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: .purple.opacity(0.3), radius: 12, y: 6)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
             }
-            .padding(16)
+            .padding(20)
         }
-        .scrollIndicators(.hidden)
     }
 }
 
 // MARK: - AI Results View
 
 private struct AiResultsView: View {
-    let response: AiIdentifyResponse
+    @ObservedObject var viewModel: AiResultsViewModel
+    @ObservedObject var aiViewModel: AiViewModel
     let onClose: () -> Void
+    let onSearchFallback: (String) -> Void
+    let onMediaSelected: (Int, MediaType) -> Void
+
+    @State private var ambiguousCandidate: ResolvedCandidate?
+
+    init(
+        response: AiIdentifyResponse,
+        imagePath: String,
+        textHint: String?,
+        aiViewModel: AiViewModel,
+        onClose: @escaping () -> Void,
+        onSearchFallback: @escaping (String) -> Void,
+        onMediaSelected: @escaping (Int, MediaType) -> Void
+    ) {
+        self.viewModel = AiResultsViewModel(
+            response: response,
+            imagePath: imagePath,
+            textHint: textHint
+        )
+        self.aiViewModel = aiViewModel
+        self.onClose = onClose
+        self.onSearchFallback = onSearchFallback
+        self.onMediaSelected = onMediaSelected
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                // Summary card with gradient accent
+                // Summary card with gradient accent and New Attempt button
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Image(systemName: "brain.head.profile")
@@ -530,9 +630,28 @@ private struct AiResultsView: View {
                         Text("AI Analysis")
                             .font(.headline)
                             .fontWeight(.semibold)
+
+                        Spacer()
+
+                        if viewModel.isResolving {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
+
+                        Button {
+                            aiViewModel.beginNewAttemptKeepingCache()
+                        } label: {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.callout)
+                                .foregroundStyle(.primary)
+                                .padding(8)
+                                .background(.ultraThinMaterial, in: Circle())
+                        }
+                        .buttonStyle(.plain)
                     }
 
-                    Text(response.querySummary)
+                    Text(viewModel.candidates.first?.original.rationale.isEmpty == false ?
+                         "Analyzing and matching with TMDB..." : "Finding best matches...")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .lineSpacing(4)
@@ -554,49 +673,52 @@ private struct AiResultsView: View {
                         .font(.title3)
                         .fontWeight(.bold)
 
-                    ForEach(response.candidates) { candidate in
-                        NavigationLink(value: MediaSummary(
-                            id: 0,
-                            mediaType: candidate.type,
-                            title: candidate.title,
-                            releaseDate: candidate.year,
-                            posterPath: nil
-                        )) {
-                            AiCandidateRow(candidate: candidate)
-                        }
-                        .simultaneousGesture(TapGesture().onEnded {
-                            onClose()
-                        })
-                    }
-                }
-
-                // Metadata footer
-                if let provider = response.provider, let model = response.model {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "sparkles")
-                                .font(.caption2)
-                            Text("Powered by \(provider)")
-                                .font(.caption)
-                        }
-                        .foregroundColor(.secondary)
-
-                        if let latency = response.latencyMs {
-                            HStack(spacing: 4) {
-                                Image(systemName: "clock")
-                                    .font(.caption2)
-                                Text("Processed in \(latency)ms")
-                                    .font(.caption)
-                            }
-                            .foregroundColor(.secondary)
+                    ForEach(viewModel.candidates) { candidate in
+                        AICandidateCard(candidate: candidate) {
+                            handleCandidateTap(candidate)
                         }
                     }
-                    .padding(.top, 4)
                 }
             }
             .padding(20)
         }
         .scrollIndicators(.hidden)
+        .sheet(item: $ambiguousCandidate) { candidate in
+            if let matches = candidate.ambiguousMatches {
+                AmbiguityPickerSheet(
+                    matches: matches,
+                    onSelect: { match in
+                        viewModel.resolveAmbiguity(for: candidate.id, selectedMatch: match)
+                        ambiguousCandidate = nil
+                        // Navigate to resolved media
+                        onMediaSelected(match.id, match.mediaType)
+                        onClose()
+                    },
+                    onCancel: {
+                        ambiguousCandidate = nil
+                    }
+                )
+            }
+        }
+    }
+
+    private func handleCandidateTap(_ candidate: ResolvedCandidate) {
+        switch candidate.state {
+        case let .resolved(media):
+            onMediaSelected(media.tmdbId, media.mediaType)
+            onClose()
+
+        case .ambiguous:
+            ambiguousCandidate = candidate
+
+        case .failed:
+            // Fallback to text search
+            onSearchFallback(candidate.original.title)
+            onClose()
+
+        default:
+            break
+        }
     }
 }
 

@@ -30,6 +30,11 @@ final class AiViewModel: ObservableObject {
     private let aiService: AIService
     private var identifyTask: Task<Void, Never>?
 
+    // Cache for persistence across sheet presentations
+    private var cachedResponse: AiIdentifyResponse?
+    private var cachedImage: UIImage?
+    private var cachedImagePath: String?
+
     init(aiService: AIService = AIService()) {
         self.aiService = aiService
     }
@@ -53,22 +58,35 @@ final class AiViewModel: ObservableObject {
     }
 
     func identifySelectedImage() async {
-        guard let selectedPhoto else { return }
-
         state = .uploadingImage
 
         do {
-            // Load image data from PhotosPickerItem
-            guard let data = try await selectedPhoto.loadTransferable(type: Data.self) else {
-                throw AIServiceError.uploadFailed
-            }
-
-            // Determine content type (default to JPEG)
+            let data: Data
             let contentType: String
-            if let mimeType = selectedPhoto.supportedContentTypes.first?.preferredMIMEType {
-                contentType = mimeType
-            } else {
+
+            // Support both PhotosPicker and camera images
+            if let selectedPhoto {
+                // Load image data from PhotosPickerItem
+                guard let photoData = try await selectedPhoto.loadTransferable(type: Data.self) else {
+                    throw AIServiceError.uploadFailed
+                }
+                data = photoData
+
+                // Determine content type (default to JPEG)
+                if let mimeType = selectedPhoto.supportedContentTypes.first?.preferredMIMEType {
+                    contentType = mimeType
+                } else {
+                    contentType = "image/jpeg"
+                }
+            } else if let selectedImage {
+                // Encode camera image to JPEG data
+                guard let jpegData = selectedImage.jpegData(compressionQuality: 0.9) else {
+                    throw AIServiceError.uploadFailed
+                }
+                data = jpegData
                 contentType = "image/jpeg"
+            } else {
+                throw AIServiceError.uploadFailed
             }
 
             // Upload to signed URL
@@ -84,6 +102,11 @@ final class AiViewModel: ObservableObject {
                 textHint: textHint.isEmpty ? nil : textHint
             )
 
+            // Cache the results
+            cachedResponse = result
+            cachedImage = selectedImage
+            cachedImagePath = uploadResult.path
+
             state = .loaded(result)
         } catch {
             state = .failed(error)
@@ -96,11 +119,52 @@ final class AiViewModel: ObservableObject {
         state = .idle
     }
 
+    var imagePath: String? {
+        cachedImagePath
+    }
+
     func reset() {
         identifyTask?.cancel()
         state = .idle
         selectedPhoto = nil
+        selectedImage = nil
         textHint = ""
+        cachedResponse = nil
+        cachedImage = nil
+        cachedImagePath = nil
+    }
+
+    func resetTransientUI() {
+        identifyTask?.cancel()
+        selectedPhoto = nil
+        selectedImage = nil
+        textHint = ""
+        // Keep cachedResponse, cachedImage, and cachedImagePath for restoration
+    }
+
+    func restoreCachedResultsIfAvailable() {
+        if let cachedResponse {
+            state = .loaded(cachedResponse)
+        }
+    }
+
+    func startNewSearch() {
+        cachedResponse = nil
+        cachedImage = nil
+        cachedImagePath = nil
+        selectedPhoto = nil
+        selectedImage = nil
+        textHint = ""
+        state = .idle
+    }
+
+    func beginNewAttemptKeepingCache() {
+        identifyTask?.cancel()
+        selectedPhoto = nil
+        selectedImage = nil
+        textHint = ""
+        state = .idle
+        // Keep cachedResponse, cachedImage, and cachedImagePath intact
     }
 
     func retry() {
@@ -109,6 +173,8 @@ final class AiViewModel: ObservableObject {
             identifyTask = Task {
                 await selectPhoto(photo)
             }
+        } else if let image = selectedImage {
+            state = .imageSelected(image)
         }
     }
 }
@@ -116,6 +182,7 @@ final class AiViewModel: ObservableObject {
 extension AiViewModel {
     @MainActor
     func selectCameraImage(_ image: UIImage) {
+        self.selectedImage = image
         self.state = .imageSelected(image)
     }
 }

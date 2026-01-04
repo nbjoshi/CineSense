@@ -15,9 +15,7 @@ struct SearchView: View {
     @Environment(\.modelContext) private var modelContext
 
     var body: some View {
-        NavigationStack {
-            SearchViewContent(modelContext: modelContext)
-        }
+        SearchViewContent(modelContext: modelContext)
     }
 }
 
@@ -39,43 +37,44 @@ private struct SearchViewContent: View {
     }
 
     var body: some View {
-        Group {
-            switch viewModel.state {
-            case .idle:
-                if isSearchPresented || !viewModel.query.isEmpty {
-                    RecentSearchesList(viewModel: viewModel, repository: recentSearchRepo)
-                } else {
-                    IdlePlaceholder()
-                }
-
-            case .loading:
-                ProgressView("Searching...")
-                    .padding(.top, 16)
-
-            case let .loaded(results):
-                List(results) { media in
-                    NavigationLink(value: media) {
-                        MediaSearchRow(media: media)
+        NavigationStack(path: $navigationPath) {
+            Group {
+                switch viewModel.state {
+                case .idle:
+                    if isSearchPresented || !viewModel.query.isEmpty {
+                        RecentSearchesList(viewModel: viewModel, repository: recentSearchRepo)
+                    } else {
+                        IdlePlaceholder()
                     }
+
+                case .loading:
+                    ProgressView("Searching...")
+                        .padding(.top, 16)
+
+                case let .loaded(results):
+                    List(results) { media in
+                        NavigationLink(value: media) {
+                            MediaSearchRow(media: media)
+                        }
+                    }
+                    .listStyle(.plain)
+
+                case .empty:
+                    ContentUnavailableView(
+                        "No Results",
+                        systemImage: "magnifyingglass.circle",
+                        description: Text("Try a different search term")
+                    )
+
+                case let .failed(error):
+                    ContentUnavailableView(
+                        "Search Failed",
+                        systemImage: "exclamationmark.triangle",
+                        description: Text(error.localizedDescription)
+                    )
                 }
-                .listStyle(.plain)
-
-            case .empty:
-                ContentUnavailableView(
-                    "No Results",
-                    systemImage: "magnifyingglass.circle",
-                    description: Text("Try a different search term")
-                )
-
-            case let .failed(error):
-                ContentUnavailableView(
-                    "Search Failed",
-                    systemImage: "exclamationmark.triangle",
-                    description: Text(error.localizedDescription)
-                )
             }
-        }
-        .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .top, spacing: 0) {
             Color.clear.frame(height: 8)
         }
@@ -149,6 +148,7 @@ private struct SearchViewContent: View {
         }
         .onAppear {
             viewModel.recentSearchRepository = recentSearchRepo
+        }
         }
     }
 }
@@ -614,17 +614,7 @@ private struct AiResultsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
-                Button {
-                    aiViewModel.beginNewAttemptKeepingCache()
-                } label: {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.headline)
-                        .padding(10)
-                        .background(.ultraThinMaterial, in: Circle())
-                }
-                .buttonStyle(.plain)
-                .alignment(.trailing)
-                // Summary card with gradient accent
+                // Summary card with gradient accent and New Attempt button
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Image(systemName: "brain.head.profile")
@@ -647,6 +637,17 @@ private struct AiResultsView: View {
                             ProgressView()
                                 .scaleEffect(0.8)
                         }
+
+                        Button {
+                            aiViewModel.beginNewAttemptKeepingCache()
+                        } label: {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.callout)
+                                .foregroundStyle(.primary)
+                                .padding(8)
+                                .background(.ultraThinMaterial, in: Circle())
+                        }
+                        .buttonStyle(.plain)
                     }
 
                     Text(viewModel.candidates.first?.original.rationale.isEmpty == false ?

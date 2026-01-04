@@ -20,30 +20,31 @@ struct AICandidateCard: View {
             }
         }) {
             HStack(alignment: .top, spacing: 12) {
-                // Poster (show actual image when available, otherwise skeleton)
-                Group {
-                    if let posterURL = candidate.posterURL {
-                        AsyncPosterImage(url: posterURL)
-                    } else {
-                        StaticSkeletonPoster()
+                // Poster with year underneath
+                VStack(spacing: 6) {
+                    Group {
+                        if let posterURL = candidate.posterURL {
+                            AsyncPosterImage(url: posterURL)
+                        } else {
+                            StaticSkeletonPoster()
+                        }
                     }
+                    .frame(width: 80, height: 120)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                    Text(candidate.original.year)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 80)
                 }
-                .frame(width: 80, height: 120)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 // Content
                 VStack(alignment: .leading, spacing: 8) {
-                    // Title with year
-                    HStack(spacing: 6) {
-                        Text(candidate.original.title)
-                            .font(.headline)
-                            .foregroundStyle(.primary)
-                            .lineLimit(2)
-
-                        Text("(\(candidate.original.year))")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+                    // Title
+                    Text(candidate.original.title)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(2)
 
                     // Media type badge
                     MediaTypeBadge(mediaType: candidate.original.type)

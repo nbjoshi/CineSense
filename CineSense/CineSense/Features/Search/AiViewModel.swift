@@ -150,6 +150,15 @@ final class AiViewModel: ObservableObject {
         state = .idle
     }
 
+    func beginNewAttemptKeepingCache() {
+        identifyTask?.cancel()
+        selectedPhoto = nil
+        selectedImage = nil
+        textHint = ""
+        state = .idle
+        // Keep cachedResponse and cachedImage intact
+    }
+
     func retry() {
         identifyTask?.cancel()
         if let photo = selectedPhoto {

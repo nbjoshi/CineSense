@@ -266,9 +266,9 @@ private struct AiSearchSheet: View {
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
                                 Button {
-                                    viewModel.startNewSearch()
+                                    viewModel.beginNewAttemptKeepingCache()
                                 } label: {
-                                    Label("New Search", systemImage: "plus.circle")
+                                    Label("New Attempt", systemImage: "arrow.counterclockwise")
                                 }
                             }
                         }
@@ -294,7 +294,7 @@ private struct AiSearchSheet: View {
             }
             .padding(.top)
         }
-        .presentationDetents(viewModel.selectedImage == nil ? [.medium] : [.large])
+        .presentationDetents([.fraction(0.92)])
         .presentationDragIndicator(.visible)
         .onAppear {
             viewModel.restoreCachedResultsIfAvailable()
@@ -443,84 +443,118 @@ private struct AiImagePreviewView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                // Hint card
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Hint (optional but highly recommended)")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
-
-                    TextField("e.g., “sci-fi series with robots”", text: $viewModel.textHint, axis: .vertical)
-                        .font(.body)
-                        .lineLimit(2...4)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 12)
-                        .background(Color.secondary.opacity(0.10))
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
-                        )
-                        .focused($hintFocused)
-                }
-                .padding(14)
-                .background(Color.secondary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-
-                // Primary action (full width, consistent height)
-                Button {
-                    hintFocused = false
-                    Task { await viewModel.identifySelectedImage() }
-                } label: {
-                    Label("Identify with AI", systemImage: "sparkles")
-                        .font(.headline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                }
-                .buttonStyle(.borderedProminent)
-
-                // Secondary action (same height)
-                Button {
-                    viewModel.clearImage()
-                } label: {
-                    Label("Choose a different image", systemImage: "photo.on.rectangle")
-                        .font(.headline.weight(.semibold))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 54)
-                }
-                .buttonStyle(.bordered)
-                
-                // Big image card
-                ZStack(alignment: .bottomTrailing) {
+            VStack(spacing: 20) {
+                // Image preview card at top
+                ZStack(alignment: .topTrailing) {
                     Image(uiImage: image)
                         .resizable()
-                        .scaledToFit()
+                        .scaledToFill()
                         .frame(maxWidth: .infinity)
-                        .frame(maxHeight: 420)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .frame(height: 280)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
                         )
-                        .shadow(color: .black.opacity(0.12), radius: 14, y: 6)
-
+                        .shadow(color: .black.opacity(0.1), radius: 16, y: 8)
+                    
+                    // Change button overlay
                     Button {
                         viewModel.clearImage()
                     } label: {
-                        Label("Change", systemImage: "arrow.triangle.2.circlepath")
-                            .font(.subheadline.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Capsule())
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                                .font(.caption.weight(.semibold))
+                            Text("Change")
+                                .font(.caption.weight(.semibold))
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
                     .padding(12)
                 }
+                
+                // Text hint card
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "lightbulb.fill")
+                            .font(.caption)
+                            .foregroundStyle(
+                                LinearGradient(
+                                    colors: [.orange, .yellow],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                        Text("Add a Hint")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .foregroundStyle(.primary)
+                    
+                    Text("Optional but highly recommended for better accuracy")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    
+                    TextField("e.g., \"sci-fi series with robots\"", text: $viewModel.textHint, axis: .vertical)
+                        .font(.body)
+                        .lineLimit(2...4)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(Color.secondary.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+                        )
+                        .focused($hintFocused)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(Color.secondary.opacity(0.05))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(Color.secondary.opacity(0.12), lineWidth: 1)
+                )
+                
+                Spacer()
+                
+                Button {
+                    hintFocused = false
+                    Task { await viewModel.identifySelectedImage() }
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "sparkles")
+                            .font(.headline)
+                        Text("Identify with AI")
+                            .font(.headline.weight(.semibold))
+                    }
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(
+                        LinearGradient(
+                            colors: [.purple, .blue],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: .purple.opacity(0.3), radius: 12, y: 6)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
             }
-            .padding(16)
+            .padding(20)
         }
-        .scrollIndicators(.hidden)
     }
 }
 

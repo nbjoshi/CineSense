@@ -148,11 +148,9 @@ final class DiscoverViewModel: ObservableObject {
 
             // Check cache first (in case same image was uploaded again)
             if let cached = aiCandidatesCache.get(imagePath: uploadResult.path, textHint: textHint) {
-                print("✅ PerformAI: Found cached results, skipping AI call")
                 state = .aiSuggestions(cached.response, cached.candidates)
                 return
             }
-            print("🔍 PerformAI: No cache, proceeding with AI identify")
 
             // Identify
             let response = try await aiService.identifyImage(
@@ -174,14 +172,12 @@ final class DiscoverViewModel: ObservableObject {
             state = .aiSuggestions(response, candidates)
 
             // Cache the fully resolved results
-            print("💾 PerformAI: Caching results for path=\(uploadResult.path), hint=\(textHint ?? "nil")")
             aiCandidatesCache.set(
                 imagePath: uploadResult.path,
                 textHint: textHint,
                 response: response,
                 candidates: candidates
             )
-            print("✅ PerformAI: Results cached successfully")
 
         } catch {
             state = .failed(error)
@@ -190,17 +186,14 @@ final class DiscoverViewModel: ObservableObject {
 
     func restoreCachedAIResults() {
         guard let imagePath = lastImagePath else {
-            print("⚠️ RestoreCache: No lastImagePath found")
             return
         }
 
         if let cached = aiCandidatesCache.get(imagePath: imagePath, textHint: lastTextHint) {
-            print("✅ RestoreCache: Found cached results for path: \(imagePath)")
             // Force state update even if already showing AI suggestions
             // This ensures the view refreshes
             state = .aiSuggestions(cached.response, cached.candidates)
         } else {
-            print("⚠️ RestoreCache: No cache entry found for path: \(imagePath), hint: \(lastTextHint ?? "nil")")
         }
     }
 
@@ -217,11 +210,9 @@ final class DiscoverViewModel: ObservableObject {
 
     var hasCachedAIResults: Bool {
         guard let imagePath = lastImagePath else {
-            print("🔍 HasCache: No lastImagePath, returning false")
             return false
         }
         let hasCache = aiCandidatesCache.get(imagePath: imagePath, textHint: lastTextHint) != nil
-        print("🔍 HasCache: Path=\(imagePath), Hint=\(lastTextHint ?? "nil"), Result=\(hasCache)")
         return hasCache
     }
 

@@ -53,7 +53,6 @@ final class SessionStore: ObservableObject {
             // sessionMissing is expected when there's no stored session (e.g., first launch)
             // Only log other errors
             if !(error is AuthError && "\(error)".contains("sessionMissing")) {
-                print("Bootstrap error: \(error)")
             }
             session = nil
         }
@@ -74,13 +73,10 @@ final class SessionStore: ObservableObject {
         errorMessage = nil
 
         do {
-            print("Sending magic link to: \(email) (mode: \(authMode.rawValue))")
             try await authService.signInWithOTP(email: email, mode: authMode)
             didSubmit = true
-            print("Magic link sent successfully!")
         } catch {
             errorMessage = mapErrorToFriendlyMessage(error)
-            print("Sign in error: \(error)")
         }
 
         isSubmitting = false
@@ -120,7 +116,6 @@ final class SessionStore: ObservableObject {
             try await authService.signOut()
             session = nil
         } catch {
-            print("Sign out error: \(error)")
         }
     }
 
@@ -129,7 +124,6 @@ final class SessionStore: ObservableObject {
         authStateTask?.cancel()
         authStateTask = Task { @MainActor in
             for await state in await SupabaseClientProvider.shared.client.auth.authStateChanges {
-                print("Auth state changed: \(state.event)")
                 session = state.session
             }
         }

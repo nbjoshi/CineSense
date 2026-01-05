@@ -18,7 +18,7 @@ Requires `Authorization: Bearer <supabase_jwt>`.
 {
   "upload_url": "https://....",
   "path": "<userId>/<uuid>.<ext>",
-  "expires_in": 60
+  "expires_in": 60  
 }
 
 # Edge Function: ai_identify

@@ -75,8 +75,6 @@ final class HTTPClient {
         do {
             return try JSONDecoder().decode(T.self, from: data)
         } catch {
-            print(error)
-            print(data)
             throw APIError.decoding(error)
         }
     }

@@ -30,7 +30,7 @@ struct RootTabView: View {
                 }
 
             // Lists tab
-            ListsTab()
+            ListsTabView()
                 .tabItem {
                     Label("Lists", systemImage: "list.bullet")
                 }
@@ -45,27 +45,6 @@ struct RootTabView: View {
 }
 
 // MARK: - Tab Placeholders
-
-private struct ListsTab: View {
-    var body: some View {
-        // Per docs: no default navigation titles
-        NavigationStack {
-            VStack(spacing: 16) {
-                Image(systemName: "list.bullet")
-                    .font(.system(size: 60))
-                    .foregroundStyle(.secondary)
-                Text("Lists")
-                    .font(.title)
-                    .foregroundColor(.secondary)
-                Text("Coming Soon")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color(.systemGroupedBackground))
-        }
-    }
-}
 
 private struct ProfileTab: View {
     @EnvironmentObject var sessionStore: SessionStore

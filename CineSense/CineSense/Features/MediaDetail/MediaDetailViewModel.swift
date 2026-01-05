@@ -27,14 +27,11 @@ final class MediaDetailViewModel: ObservableObject {
 
     func loadDetail(id: Int, mediaType: MediaType) async {
         state = .loading
-        print("Id: \(id)")
-        print("MediaType: \(mediaType)")
         
         do {
             let detail = try await mediaDetailService.getMediaDetail(id: id, mediaType: mediaType)
             state = .loaded(detail)
         } catch {
-            print(error)
             state = .failed(error)
         }
     }

@@ -50,6 +50,7 @@ private struct DetailContent: View {
     private let headerHeight: CGFloat = 380
 
     @State private var selectedSeasonNumber: Int = 1
+    @State private var showingAddToPlaylist = false
     
     var body: some View {
         GeometryReader { proxy in
@@ -105,9 +106,12 @@ private struct DetailContent: View {
                         
                         // Action Buttons
                         HStack(spacing: 12) {
-                            ActionButton(icon: "plus", label: "Watchlist")
-                            ActionButton(icon: "heart", label: "Favorite")
-                            ActionButton(icon: "square.and.arrow.up", label: "Share")
+                            ActionButton(icon: "plus", label: "Playlist") {
+                                showingAddToPlaylist = true
+                            }
+                            ActionButton(icon: "square.and.arrow.up", label: "Share") {
+                                // TODO: Implement share
+                            }
                         }
                         
                         // Genres
@@ -269,6 +273,9 @@ private struct DetailContent: View {
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
             .background(NavigationControllerConfigurator())
+            .sheet(isPresented: $showingAddToPlaylist) {
+                AddToPlaylistSheet(tmdbId: mediaId, mediaType: detail.mediaType)
+            }
         }
     }
     
@@ -325,10 +332,11 @@ private class NavigationControllerConfiguratorViewController: UIViewController {
 private struct ActionButton: View {
     let icon: String
     let label: String
+    let action: () -> Void
 
     var body: some View {
         Button {
-            // TODO: Implement action
+            action()
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: icon)
